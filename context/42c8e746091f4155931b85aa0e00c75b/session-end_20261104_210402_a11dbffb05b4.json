@@ -1,0 +1,1582 @@
+{
+  "workflow": "session-end",
+  "timestamp": "2026-11-04T21:04:02.232663-04:00",
+  "machine_id": "42c8e746091f4155931b85aa0e00c75b",
+  "prompt": "",
+  "guardian_json": {
+    "schema_version": "1.0",
+    "workflow": "session-end",
+    "pruning_applied": false,
+    "estimated_tokens": 5954,
+    "sources": {
+      "constitution": {
+        "schema_type": "constitution",
+        "schema_version": "0.0.1",
+        "domain_index": {
+          "PURPOSE": [
+            "P00"
+          ],
+          "GOVERNANCE": [
+            "P01",
+            "P02",
+            "P05"
+          ],
+          "GROUNDING": [
+            "P03"
+          ],
+          "INFRASTRUCTURE": [
+            "P04",
+            "P16"
+          ],
+          "SECRETS": [
+            "P06"
+          ],
+          "PRIVACY_DATA_VAULT": [
+            "P07"
+          ],
+          "AGENT_SECURITY": [
+            "P08",
+            "P12",
+            "P13"
+          ],
+          "CLINICAL_SAFETY": [
+            "P09",
+            "P14"
+          ],
+          "DIDACTIC_ENGINEERING": [
+            "P10"
+          ],
+          "HARDWARE_AGNOSTICISM": [
+            "P11"
+          ],
+          "OBSERVABILITY": [
+            "P15"
+          ],
+          "REGULATORY_COMPLIANCE": [
+            "P17"
+          ]
+        },
+        "principles": {
+          "P00": {
+            "name": "Purpose Arbiter — Human Wellbeing First",
+            "domain": "PURPOSE",
+            "severity": "BLOCKING",
+            "rule": "Toda decisão técnica serve ao bem-estar de quem usa, de quem cuida e de quem constrói. Quando artigos colidirem ou caso não previsto surgir, este princípio é o critério de desempate inviolável.\n",
+            "rationale": "Tecnologia a serviço do bem-estar humano. Nenhuma pressão de prazo suspende este árbitro. Fonte: architect-constitution.md Art. 0.\n",
+            "validator": "manual"
+          },
+          "P01": {
+            "name": "SDD Pipeline Inviolability",
+            "domain": "GOVERNANCE",
+            "severity": "BLOCKING",
+            "rule": "Nunca implementar código sem tasks.md aprovado. Pipeline obrigatório: specify → plan → tasks → implement → converge. Em domínios de saúde, spec inclui o medical-gate (P09) antes do plan.\n",
+            "rationale": "Código sem spec é dívida técnica não rastreável. O Task Verifier garante que cada linha tem origem em requisito aprovado pelo usuário.\n",
+            "validator": "/vitalia-task-verifier"
+          },
+          "P02": {
+            "name": "User-Centric Validation & Impact Declaration",
+            "domain": "GOVERNANCE",
+            "severity": "WARNING",
+            "rule": "Toda proposta técnica declara o impacto ao usuário final. Antes de qualquer spec, validar: Multi-Tenancy, RBAC, LGPD/HIPAA, Performance (N+1), Segurança (input validation). LGPD/HIPAA ativa P07 e P09.\n",
+            "rationale": "Decisões sem âncora no usuário produzem sistemas corretos funcionalmente mas incorretos em valor entregue.\n",
+            "validator": "hooks/guardian_context.py"
+          },
+          "P03": {
+            "name": "External Verification Protocol (Grounding)",
+            "domain": "GROUNDING",
+            "severity": "WARNING",
+            "rule": "Versões de pacotes, endpoints de API, preços cloud, referências científicas e CVEs exigem busca externa prévia e Rastro de Pesquisa no artefato. Comportamento real de APIs validado antes de implementar.\n",
+            "rationale": "LLMs alucinam versões e URLs. Em saúde, um pacote desatualizado pode ter consequências clínicas. \"Confiar sem verificar\" é falha.\n",
+            "validator": "hooks/guardian_context.py"
+          },
+          "P04": {
+            "name": "Timestamp & GMT-04:00 Integrity",
+            "domain": "INFRASTRUCTURE",
+            "severity": "WARNING",
+            "rule": "Todo arquivo criado ou modificado contém na primeira linha o cabeçalho `nome_arquivo | Vitalia SDD v0.6.0 | DD-MM-YYYY HH:MM(GMT-04:00)`. Em arquivos Markdown (.md), a primeira linha contém o comentário HTML `<!-- nome_arquivo | Vitalia SDD v0.6.0 | DD-MM-YYYY HH:MM(GMT-04:00) -->` e a segunda linha contém obrigatoriamente a repetição em formato visível: `> **nome_arquivo | Vitalia SDD v0.6.0 | DD-MM-YYYY HH:MM(GMT-04:00)**`. Fuso imutável America/Cuiaba (GMT-04:00) — sem exceções e sem DST.\n",
+            "rationale": "Rastreabilidade exige que qualquer artefato possa ser datado. A repetição visível em .md assegura legibilidade tanto no código quanto no modo renderizado da IDE. GMT-04:00 imutável garante consistência entre máquinas em fusos distintos.\n",
+            "validator": "maintenance/header_stamp.py"
+          },
+          "P05": {
+            "name": "Test-First Development (TDD Inviolável)",
+            "domain": "GOVERNANCE",
+            "severity": "BLOCKING",
+            "rule": "Nenhuma lógica em services/, core/, domain/ ou use_cases/ é implementada sem teste escrito antes (Red phase confirmada). Cobertura mínima: Services 90%, Views 70%, Utils 80%, Models 85%. Tool Hook: escrita em .py produtivo bloqueada sem teste no histórico.\n",
+            "rationale": "Código sem teste é dívida com data de validade curta. Red phase confirma que o teste realmente verifica o comportamento esperado.\n",
+            "validator": "hooks/llm_judge.py --mode after_task"
+          },
+          "P06": {
+            "name": "Secrets Never in Git",
+            "domain": "SECRETS",
+            "severity": "BLOCKING",
+            "rule": "Credenciais, chaves e senhas existem apenas em .env locais ou vaults. Nenhum segredo entra em commits, logs ou outputs de console. Migrações de banco são não-destrutivas e idempotentes.\n",
+            "rationale": "Segredo em git é permanente — o histórico não apaga. Em sistemas de saúde com PHI/PII, constitui breach reportável (LGPD Art. 48).\n",
+            "validator": "manual"
+          },
+          "P07": {
+            "name": "Privacy by Design & Data Vault (LGPD/HIPAA)",
+            "domain": "PRIVACY_DATA_VAULT",
+            "severity": "BLOCKING",
+            "rule": "Dado de saúde pertence ao Participante. PHI/PII criptografado em repouso (nível de campo). Logs sanitizados — sem dado de saúde em texto puro. Queries sempre com user_id + organization_id. Suporte a exclusão auditável (LGPD Art. 18).\n",
+            "rationale": "LGPD Art. 11 exige base legal para dados de saúde. Multi-tenancy sem filtro é vulnerabilidade CRÍTICA. Tolerância zero.\n",
+            "validator": "hooks/llm_judge.py --mode after_task"
+          },
+          "P08": {
+            "name": "Smart Routing & Minimum Privilege per Agent",
+            "domain": "AGENT_SECURITY",
+            "severity": "INFO",
+            "rule": "Identificar silenciosamente o domínio e ativar especialista conforme AGENTS.md. Agentes não acessam ferramentas fora de seu domínio declarado (default-deny — OWASP LLM06:2025). Override: @agente ou menção explícita do usuário.\n",
+            "rationale": "Excessive Agency (OWASP LLM06:2025) é risco crítico em sistemas multi-agente. Mínimo privilégio reduz superfície de ataque.\n",
+            "validator": "hooks/guardian_context.py"
+          },
+          "P09": {
+            "name": "Medical Safety Gate (HITL Triplo)",
+            "domain": "CLINICAL_SAFETY",
+            "severity": "BLOCKING",
+            "rule": "IA gera → DRAFT. Especialista científico → REVIEW. Profissional de saúde humano → ACTIVE (único estado publicável ao usuário final). Disclaimer educacional obrigatório. Gate ativado por: diagnóstico, dosagens, biomarcadores, protocolos, nutrição, zonas de treino.\n",
+            "rationale": "IA alucina. Em saúde, isso tem consequências à vida humana. HITL médico é requisito ético, regulatório (EU AI Act Art. 14) e de responsabilidade civil. Não é opcional.\n",
+            "validator": "/vitalia-task-verifier"
+          },
+          "P10": {
+            "name": "Didactics-First & Automation as Guardian",
+            "domain": "DIDACTIC_ENGINEERING",
+            "severity": "WARNING",
+            "rule": "100% dos scripts Python implementam --help didático com exemplos. Código contém comentários inline acessíveis a desenvolvedores júnior. Processos repetitivos têm scripts — processo manual é falha esperando.\n",
+            "rationale": "O Kit é usado por pesquisadores sem background de engenharia. Código sem --help é inacessível e gera suporte manual evitável.\n",
+            "validator": "hooks/llm_judge.py --mode after_task"
+          },
+          "P11": {
+            "name": "Hardware-Agnostic LLM Routing, Data Contracts & Machine Identity",
+            "domain": "HARDWARE_AGNOSTICISM",
+            "severity": "BLOCKING",
+            "rule": "Nenhum nome de modelo LLM hardcoded — vem de .env (NO1_MODEL, NO2_MODEL, ROUTER_LLM_PROFILE etc.). Todo contrato de schema JSON no sistema deve seguir estritamente o subset OpenAPI 3.0 limpo, sendo terminantemente proibidos meta-campos incompatíveis com compiladores REST de LLM como '$schema', 'title' e 'additionalProperties: false'. Instâncias de runtime (.vitalia/*.json) são dados planos, nunca definições de schemas. Nenhum machine_id hardcoded — deriva de VITALIA_MACHINE_NAME env var ou socket.gethostname() via SHA256[:8]. Builds reprodutíveis: local = produção.\n",
+            "rationale": "Sistema opera em hardware heterogêneo (GTX 1060 6GB, RTX 3090, CPU-only). Hardcodar quebra silenciosamente em hardware diferente.\n",
+            "validator": "manual"
+          },
+          "P12": {
+            "name": "Agent Security — Prompt Injection & Output Validation",
+            "domain": "AGENT_SECURITY",
+            "severity": "BLOCKING",
+            "rule": "Todo input é potencialmente malicioso (OWASP LLM01:2025). Output de LLMs nunca executado sem validação de schema. System prompts são segredos (LLM07:2025). Agentes não executam ações destrutivas sem confirmação HITL. Stack trace nunca vaza para o cliente.\n",
+            "rationale": "Prompt Injection é risco #1 em sistemas agênticos (OWASP 2025). Indirect Injection via RAG é especialmente perigosa em healthcare.\n",
+            "validator": "hooks/llm_judge.py --mode after_task"
+          },
+          "P13": {
+            "name": "API Safety Gate",
+            "domain": "AGENT_SECURITY",
+            "severity": "BLOCKING",
+            "rule": "Nenhum endpoint de dado de saúde é público. Checklist obrigatório: autenticação JWT, autorização por recurso, rate limiting, validação de input via schema, filtro por organization_id, sem stack trace para o cliente (log interno + resposta genérica).\n",
+            "rationale": "Endpoints sem autenticação em sistemas de saúde violam LGPD e HIPAA. Autorização vs autenticação é o erro mais comum em APIs REST.\n",
+            "validator": "/vitalia-task-verifier"
+          },
+          "P14": {
+            "name": "Evidence Traceability & Clinical Data Lineage",
+            "domain": "CLINICAL_SAFETY",
+            "severity": "BLOCKING",
+            "rule": "Todo constraint médico (MC-NNN) carrega: identificador rastreável, fonte científica com nível (A=meta-análise, B=RCT, C=expert) e comentário no código. EU AI Act Art. 12: logs automáticos de inputs, outputs e ações humanas com timestamps.\n",
+            "rationale": "Explicabilidade jurídica exige raciocínio auditável. EU AI Act (vigência 02-08-2026) impõe data lineage obrigatório para high-risk AI.\n",
+            "validator": "/vitalia-task-verifier"
+          },
+          "P15": {
+            "name": "Observability & Structured Logging",
+            "domain": "OBSERVABILITY",
+            "severity": "WARNING",
+            "rule": "Structured logging obrigatório em serviços críticos. N+1 é falha de design — usar eager loading. Processamento pesado vai para filas (Redis Streams), não para o ciclo de request. Telemetria de agentes centralizada para rastreabilidade de inter-agent communication.\n",
+            "rationale": "Em sistemas multi-agente, falhas cascata são impossíveis de diagnosticar sem telemetria centralizada.\n",
+            "validator": "manual"
+          },
+          "P16": {
+            "name": "Artifact Integrity & Mermaid Defensive Programming",
+            "domain": "INFRASTRUCTURE",
+            "severity": "WARNING",
+            "rule": "Toda edição deixa o arquivo em estado válido sem regressões. Modificações parciais que tornam arquivos inconsistentes são vetadas. Mermaid: todos os labels de nodes e edges entre aspas duplas para prevenir quebra por caracteres especiais: (), [], |, {}. Históricos de sessão: inserção sempre no topo (cronologia reversa).\n",
+            "rationale": "Artefatos inconsistentes causam falhas silenciosas de integração. Mermaid quebra silenciosamente com parênteses em timestamps.\n",
+            "validator": "maintenance/header_stamp.py"
+          },
+          "P17": {
+            "name": "EU AI Act Compliance — High-Risk Healthcare AI",
+            "domain": "REGULATORY_COMPLIANCE",
+            "severity": "BLOCKING",
+            "rule": "Sistemas de IA em saúde são high-risk sob EU AI Act (vigente 02-08-2026). Obrigações: documentação técnica antes do deploy, sistema de gestão de risco documentado, logs automáticos (Art. 12), human oversight efetivo (Art. 14), quality management system. Penalty: até €15M ou 3% do faturamento global.\n",
+            "rationale": "Conformidade não é diferencial — é baseline legal. Produtos sem conformidade expõem pacientes a risco e a empresa a sanções graves.\n",
+            "validator": "manual"
+          }
+        }
+      },
+      "routing_table": {
+        "schema_type": "routing_table",
+        "schema_version": "0.0.1",
+        "agents": [
+          {
+            "id": "session-start",
+            "name": "Início de Sessão",
+            "command": "/vitalia-session-start",
+            "emoji": "🚀",
+            "gates": [
+              "route"
+            ],
+            "priority": 1,
+            "fallback": false,
+            "patterns": [
+              "iniciar sessão",
+              "começar",
+              "onde parei",
+              "cold start",
+              "retomar",
+              "abrir sessão",
+              "bom dia",
+              "vamos começar"
+            ],
+            "description": "Recupera contexto completo e apresenta P0. Usar quando o usuário quer explicitamente iniciar ou retomar uma sessão."
+          },
+          {
+            "id": "session-end",
+            "name": "Encerramento de Sessão",
+            "command": "/vitalia-session-end",
+            "emoji": "🏁",
+            "gates": [
+              "route"
+            ],
+            "priority": 1,
+            "patterns": [
+              "encerrar sessão",
+              "finalizar",
+              "salvar e sair",
+              "commitar contexto",
+              "fechar o dia",
+              "terminar"
+            ],
+            "description": "Reflexão, atualização 3-Tier, commit e shard."
+          },
+          {
+            "id": "session-consolidate",
+            "name": "Consolidação",
+            "command": "/vitalia-session-consolidate",
+            "emoji": "🔄",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "consolidar",
+              "sincronizar",
+              "push contexto",
+              "dashboard",
+              "atualizar readme",
+              "consolidar shards"
+            ],
+            "description": "Consolida shards e renderiza README visual do contexto."
+          },
+          {
+            "id": "brainstorming",
+            "name": "Brainstorming",
+            "command": "/vitalia-brainstorming",
+            "emoji": "🌀",
+            "gates": [
+              "route"
+            ],
+            "priority": 1,
+            "fallback": true,
+            "patterns": [
+              "brainstorming",
+              "explorar",
+              "pensar sobre",
+              "ideia",
+              "discutir",
+              "design thinking socrático",
+              "quero construir",
+              "como poderíamos"
+            ],
+            "description": "Supervisor do ciclo SDD. Fallback padrão: intenção vaga ou sem match → brainstorming socrático (C11)."
+          },
+          {
+            "id": "spec-specify",
+            "name": "Especificação",
+            "command": "/vitalia-spec-specify",
+            "emoji": "📋",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "especificar",
+              "criar spec",
+              "escrever requisitos",
+              "feature spec",
+              "nova feature",
+              "spec-specify"
+            ],
+            "description": "Traduz pedido em spec.md formal com FR-xxx, SC-xxx e Given/When/Then."
+          },
+          {
+            "id": "spec-plan",
+            "name": "Plano Técnico",
+            "command": "/vitalia-spec-plan",
+            "emoji": "🗺️",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "planejar",
+              "criar plano",
+              "arquitetura da feature",
+              "spec-plan",
+              "plan.md"
+            ],
+            "description": "Lê spec aprovada e propõe arquitetura técnica com decisões documentadas."
+          },
+          {
+            "id": "spec-tasks",
+            "name": "Tarefas",
+            "command": "/vitalia-spec-tasks",
+            "emoji": "✅",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "criar tasks",
+              "quebrar em tarefas",
+              "spec-tasks",
+              "tasks.md",
+              "tarefas atômicas"
+            ],
+            "description": "Converte plan.md aprovado em tasks.md com tarefas atômicas."
+          },
+          {
+            "id": "spec-implement",
+            "name": "Implementação",
+            "command": "/vitalia-spec-implement",
+            "emoji": "⚙️",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "implementar",
+              "codar",
+              "executar tasks",
+              "iniciar implementação",
+              "spec-implement"
+            ],
+            "description": "Executa rigorosamente o tasks.md aprovado."
+          },
+          {
+            "id": "task-verifier",
+            "name": "Verificador de Tarefas",
+            "command": "/vitalia-task-verifier",
+            "emoji": "🔍",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "verificar tasks",
+              "checar constituição",
+              "task-verifier",
+              "compliance",
+              "validar tarefas"
+            ],
+            "description": "Sub-agente que checa tasks.md contra a constitution antes da implementação."
+          },
+          {
+            "id": "analyze",
+            "name": "Análise",
+            "command": "/vitalia-analyze",
+            "emoji": "🔬",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "analisar",
+              "análise de consistência",
+              "verificar spec",
+              "gap análise"
+            ],
+            "description": "Análise read-only de consistência entre spec.md, plan.md e tasks.md."
+          },
+          {
+            "id": "review",
+            "name": "Revisão de Código",
+            "command": "/vitalia-review",
+            "emoji": "👁️",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "revisar código",
+              "code review",
+              "auditar",
+              "qualidade",
+              "review"
+            ],
+            "description": "Audita qualidade, arquitetura e segurança de arquivo ou diretório."
+          },
+          {
+            "id": "converge",
+            "name": "Convergência",
+            "command": "/vitalia-converge",
+            "emoji": "🎯",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "converge",
+              "reconciliar",
+              "tasks desatualizadas",
+              "código vs spec"
+            ],
+            "description": "Avalia código real contra spec/plan/tasks e reconcilia o tasks.md."
+          },
+          {
+            "id": "debug",
+            "name": "Debug",
+            "command": "/vitalia-debug",
+            "emoji": "🐛",
+            "gates": [
+              "route"
+            ],
+            "priority": 1,
+            "patterns": [
+              "debug",
+              "depurar",
+              "erro",
+              "bug",
+              "falha",
+              "não funciona",
+              "exception"
+            ],
+            "description": "Fluxo sistemático de depuração para isolar falhas."
+          },
+          {
+            "id": "continue",
+            "name": "Continuar",
+            "command": "/vitalia-continue",
+            "emoji": "▶️",
+            "gates": [
+              "route"
+            ],
+            "priority": 1,
+            "patterns": [
+              "continuar",
+              "retomar implementação",
+              "continue",
+              "próximo arquivo"
+            ],
+            "description": "Retoma implementação de feature ou arquivo com contexto completo."
+          },
+          {
+            "id": "clarify",
+            "name": "Clarificação",
+            "command": "/vitalia-clarify",
+            "emoji": "❓",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "clarificar",
+              "ambiguidade",
+              "dúvida na spec",
+              "clarify"
+            ],
+            "description": "Detecta e resolve ambiguidades no spec.md ativo."
+          },
+          {
+            "id": "pair",
+            "name": "Pair Programming",
+            "command": "/vitalia-pair",
+            "emoji": "👥",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "pair programming",
+              "parear",
+              "programar junto",
+              "chunk por chunk"
+            ],
+            "description": "Modo pair programming estruturado — propõe cada chunk."
+          },
+          {
+            "id": "adr",
+            "name": "ADR",
+            "command": "/vitalia-adr",
+            "emoji": "📐",
+            "gates": [
+              "route"
+            ],
+            "priority": 3,
+            "patterns": [
+              "ADR",
+              "decision record",
+              "decisão arquitetural",
+              "documentar decisão"
+            ],
+            "description": "Cria Architecture Decision Record de forma interativa."
+          },
+          {
+            "id": "release",
+            "name": "Release",
+            "command": "/vitalia-release",
+            "emoji": "🚢",
+            "gates": [
+              "route"
+            ],
+            "priority": 3,
+            "patterns": [
+              "release",
+              "publicar",
+              "changelog",
+              "versionar",
+              "tag"
+            ],
+            "description": "Prepara e executa processo de release com checklist e changelog."
+          },
+          {
+            "id": "medical-gate",
+            "name": "Medical Gate",
+            "command": "/vitalia-medical-gate",
+            "emoji": "🩺",
+            "gates": [
+              "route"
+            ],
+            "priority": 1,
+            "patterns": [
+              "clínico",
+              "diagnóstico",
+              "biomarcador",
+              "dosagem",
+              "HITL médico",
+              "risco clínico",
+              "protocolo médico",
+              "saúde",
+              "dado de saúde"
+            ],
+            "description": "Gate de segurança clínica — avalia risco e emite constraints HITL."
+          },
+          {
+            "id": "science-review",
+            "name": "Revisão Científica",
+            "command": "/vitalia-science-review",
+            "emoji": "🔭",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "revisão científica",
+              "evidência",
+              "nível de evidência",
+              "science-review",
+              "artigo científico"
+            ],
+            "description": "Coordena revisão científica de features antes de publicar."
+          },
+          {
+            "id": "vitalia-integrative-review",
+            "name": "Revisão Integrativa",
+            "command": "/vitalia-vitalia-integrative-review",
+            "emoji": "📚",
+            "gates": [
+              "route"
+            ],
+            "priority": 2,
+            "patterns": [
+              "revisão integrativa",
+              "PRISMA",
+              "Scopus",
+              "Web of Science",
+              "revisão de literatura"
+            ],
+            "description": "Workflow de revisão integrativa com PRISMA, Scopus e Web of Science."
+          },
+          {
+            "id": "skill-evaluation",
+            "name": "Avaliação de Skills",
+            "command": "/vitalia-skill-evaluation",
+            "emoji": "��",
+            "gates": [
+              "route"
+            ],
+            "priority": 3,
+            "patterns": [
+              "avaliar skill",
+              "gargalo",
+              "skill-evaluation",
+              "otimizar workflow"
+            ],
+            "description": "Analisa histórico da sessão para identificar gargalos e recomendar melhorias."
+          },
+          {
+            "id": "architect",
+            "name": "Vitalia Architect",
+            "command": "/vitalia-architect",
+            "emoji": "🏛️",
+            "gates": [
+              "route"
+            ],
+            "priority": 1,
+            "patterns": [
+              "arquiteto",
+              "architect",
+              "decisão arquitetural",
+              "regência",
+              "tech lead",
+              "governança",
+              "condução técnica",
+              "planejamento de turno"
+            ],
+            "description": "Regência do Tech Lead e Arquiteto de Soluções — consolida planos de turno, compliance constitucional e transições técnicas."
+          }
+        ]
+      },
+      "brainstorming_intents": {
+        "schema_type": "brainstorming_intents",
+        "schema_version": "0.0.1",
+        "domains": {
+          "estrategia_produto": {
+            "description": "Concepcao de novas funcionalidades, alinhamento de roadmap, proposta de valor e trade-offs de produto.",
+            "threshold": 0.8,
+            "p0_flag": false,
+            "utterances": [
+              "Quero criar uma nova funcionalidade no sistema",
+              "Preciso estruturar a ideia de um novo modulo",
+              "Como podemos desenhar a proposta deste produto?",
+              "Quero fazer um brainstorming de produto",
+              "Preciso decidir os trade-offs desta feature",
+              "Como posso melhorar a experiencia do usuario nesta tela?",
+              "Quero propor um novo fluxo de onboarding"
+            ]
+          },
+          "arquitetura_software": {
+            "description": "Decisões arquiteturais estruturantes, isolamento de dependências, padrões de design, regência do Tech Lead e compliance com princípios constitucionais.",
+            "threshold": 0.82,
+            "p0_flag": false,
+            "utterances": [
+              "Quero definir a arquitetura de software para este subsistema",
+              "Preciso desenhar o diagrama de componentes e fluxos técnicos",
+              "Como desacoplar a infraestrutura externa e migrar para filesystem puro?",
+              "Quero planejar o turno com a regência do Architect",
+              "Quero documentar um Architecture Decision Record (ADR)",
+              "Preciso isolar as dependências e criar um runtime idempotente"
+            ]
+          },
+          "educacao_workshop": {
+            "description": "Criacao de material didatico, estruturacao de cursos, workshops, apresentacoes academicas ou treinos.",
+            "threshold": 0.78,
+            "p0_flag": false,
+            "utterances": [
+              "Crie uma apresentacao sobre o kit para a universidade",
+              "Preciso de um roteiro de workshop tecnico",
+              "Como estruturar uma aula pratica sobre este tema?",
+              "Desenvolva um plano de ensino ou treinamento",
+              "Monte um material didatico sobre arquitetura de software",
+              "Quero criar um curso sobre desenvolvimento com IA",
+              "Preciso de slides para uma palestra academica"
+            ]
+          },
+          "saude_clinica": {
+            "description": "Sistemas medicos, manipulacao de dados de pacientes, algoritmos de suporte a decisao clinica e privacidade.",
+            "threshold": 0.85,
+            "p0_flag": true,
+            "utterances": [
+              "Desenvolver modulo de prontuario ou dados de saude",
+              "Integracao com exames ou biomarcadores",
+              "Analise de dados medicos ou diagnosticos",
+              "Sistema para uso por profissionais de saude em clinica",
+              "Tratamento de dados sensiveis de pacientes (LGPD/HIPAA)",
+              "Quero adicionar recomendacao de intensidade de treino",
+              "Preciso registrar frequencia cardiaca e calcular zonas de esforco"
+            ]
+          }
+        }
+      },
+      "context_learnings": [
+        {
+          "id": "311d5098",
+          "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+          "machine_id": "17a6f667",
+          "source_origin": "ai-control",
+          "category": "KIT",
+          "learning": "[KIT] Contratos OpenAPI 3.0 para Google Gemini REST: Schemas JSON validados por compiladores de modelos de fronteira rejeitam meta-campos Draft-07 como $schema, title no nó raiz e additionalProperties: false (gerando HTTP 400). Padrão estrito OpenAPI 3.0 limpo.",
+          "rationale": "Previne falhas de compilação de schema via chamadas de API em tempo de execução.",
+          "trigger_event": "session-end"
+        },
+        {
+          "id": "d8d29577",
+          "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+          "machine_id": "17a6f667",
+          "source_origin": "ai-control",
+          "category": "KIT",
+          "learning": "[KIT] Sub-Agente Nativo vs CLI Externo: A orquestração do SDD-Judge nativamente na IDE Antigravity elimina a necessidade de fatiamento de 400 tokens de VRAM e previne diluição de regras constitucionais.",
+          "rationale": "Janelas de contexto amplas com Sanduíche Constitucional mantêm atenção aos princípios e reduzem alucinações na auditoria.",
+          "trigger_event": "session-end"
+        },
+        {
+          "id": "353fca0f",
+          "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+          "machine_id": "17a6f667",
+          "source_origin": "ai-control",
+          "category": "PROJETO",
+          "learning": "[PROJETO] Governança Scaffold Puro e Convenção Sequencial: Estrutura specs/<NNN>-<slug>/ com 3 dígitos zero-padded e scaffold direto de source/ para ~/.vitalia/ garante reprodutibilidade e modularidade.",
+          "rationale": "Evita sobreposições e mantém a integridade de repositórios locais do kit.",
+          "trigger_event": "session-end"
+        }
+      ],
+      "context_decisions": [
+        {
+          "id": "a439a5bb",
+          "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+          "machine_id": "17a6f667",
+          "category": "ARQUITETURA",
+          "decision": "Executar o SDD-Judge como Sub-Agente nativo na IDE Antigravity com HITL soberano",
+          "rationale": "Permite auditoria em janela de 1M-2M tokens com Sanduíche Constitucional sem perda de regras e sem travar a IDE.",
+          "alternatives": [
+            "Executar script CLI sdd_judge.py via terminal externo com fatiamento de 400 tokens"
+          ]
+        },
+        {
+          "id": "ad0a2d82",
+          "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+          "machine_id": "17a6f667",
+          "category": "ARQUITETURA",
+          "decision": "Adotar Sanduíche Constitucional (Primacy Bias P00-P20 e Recency Checklist) e Inverted CoT",
+          "rationale": "Neutraliza attention loss em prompts longos e mitiga confirmação prematura via veredito emitido apenas ao final da crítica.",
+          "alternatives": [
+            "Prompt linear padrão com veredito no início"
+          ]
+        },
+        {
+          "id": "246ef7bd",
+          "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+          "machine_id": "17a6f667",
+          "category": "ARQUITETURA",
+          "decision": "Utilizar estritamente contratos JSON OpenAPI 3.0 puros (sem $schema, sem title e sem additionalProperties: false)",
+          "rationale": "Evita erros de compilação HTTP 400 no compilador REST do Google Gemini.",
+          "alternatives": [
+            "JSON Schema Draft-07 completo com meta-schemas"
+          ]
+        }
+      ]
+    },
+    "session_context": {
+      "user_input": "",
+      "cwd": "/home/andre/projetos/assistidos/vitalia-spec-kit",
+      "project_root": "/home/andre/projetos/assistidos/vitalia-spec-kit"
+    }
+  },
+  "raw_toml_data": {
+    "description": "Encerra a sessão em 4 fases: reflexão, atualização 3-Tier, commit e shard.",
+    "meta": {
+      "version": "0.0.1",
+      "domain_gates": []
+    },
+    "hooks": {
+      "before": [],
+      "after": []
+    },
+    "tools": {
+      "required": [
+        "read_file",
+        "write_file",
+        "run_command"
+      ],
+      "optional": []
+    },
+    "context": {
+      "reads": [
+        ".vitalia/feature.json",
+        "{{VITALIA_KIT_DIR}}/config/schemas/learning_schema.json",
+        "{{VITALIA_KIT_DIR}}/config/schemas/decision_schema.json",
+        "{{VITALIA_KIT_DIR}}/config/schemas/grounding_domain_schema.json"
+      ],
+      "writes": []
+    },
+    "transport": {
+      "preferred": "filesystem",
+      "file_path": ".vitalia/pipeline.json",
+      "session_shard": true
+    },
+    "guardian": {
+      "yaml_sources": [
+        "constitution"
+      ],
+      "guardian_profile": "gp_session-end",
+      "prompt": "## User Input\n\n```text\n{{args}}\n```\n\n<!-- session-end.md | Atualizado pela Spec 3.1 -->\n\n# /session-end — Encerramento de Sessão (Spec 3.1)\n\n{{args}}\n\n---\n\n## Propósito\n\nReflexão, registro e commit local. **NÃO faz push** do repositório de contexto.\n\n---\n\n## Pipeline de Encerramento (As 4 Fases)\n\n### 🪞 Fase 1 — Extração Cognitiva e Reflexão (HITL)\n\n**Diretiva de Extração Rigorosa:**\nVocê atua como o consolidador da memória. Analise ativamente todo o seu histórico de chat (transcript) nesta sessão. Você DEVE extrair as decisões arquiteturais e os aprendizados, formatando-os ESTRITAMENTE conforme os moldes de `learning_schema.json` e `decision_schema.json` carregados no seu contexto.\n\n- **Filtro da Constituição:** Antes de registrar uma decisão, valide-a contra as regras presentes na sua `constitution` (injetada no `guardian_json`). Rejeite silenciosamente decisões que violem a constituição.\n- **Categorização:** Para aprendizados, use `[KIT]` para melhorias no ecossistema e `[PROJETO]` para a base de código local.\n\nApresente um resumo para o usuário aprovar:\n```markdown\n📋 Resumo da sessão\n\n**Atividades:**\n- [item]\n- [item]\n\n**Próximo Passo (P0):**\n- [item]\n\n**Aprendizados Identificados:**\n- [KIT] [descrição]\n- [PROJETO] [descrição]\n\n✅ Aprova este resumo? Ajuste o que desejar.\n```\n\n#### 1.1 Detecção de Novos Domínios de Grounding (após aprovação do resumo)\n\nApós o usuário aprovar o resumo, verifique se algum aprendizado `[KIT]` revela:\n- Um domínio de risco externo NÃO coberto na leitura do arquivo global `{{VITALIA_KIT_DIR}}/profiles/grounding_domains.yaml`\n- Uma fonte autoritativa melhor para um domínio já existente\n\nSe sim, para cada domínio/fonte nova detectada:\n1. Anunciar ao usuário: `\"Novo domínio de grounding identificado: [X] — adicionar ao repositório local?\"`\n2. Se aprovado, fazer **append** em `.vitalia/memory/session/data/grounding-domains.jsonl`, preenchendo as variáveis rigorosamente de acordo com o `grounding_domain_schema.json` carregado no seu contexto:\n```bash\necho '{\"id\":\"<sha256[:16] do conteúdo>\",\"type\":\"new_domain\",\"scope\":null,\"domain\":\"<nome>\",\"description\":\"<desc>\",\"authoritative_sources\":[\"<url>\"],\"machine_id\":\"<id>\",\"timestamp\":\"<DD-MM-YYYY HH:MM(GMT-04:00)>\",\"reason\":\"<motivo>\"}' >> .vitalia/memory/session/data/grounding-domains.jsonl\n```\n3. **NÃO decidir** global vs local aqui — decisão de scope é do `/vitalia-session-consolidate`\n4. **NÃO editar** views nem o yaml global.\n\n### 🧠 Fase 2 — Atualização Estruturada do Shard e Dados (via Motor)\n\nApós a aprovação, não escreva nos arquivos YAML ou JSONL diretamente. Extraia os dados e delegue a persistência ao motor de contexto.\n\n1. Crie o arquivo `.vitalia/temp_learnings.json` contendo a array JSON dos aprendizados. Utilize ESTRITAMENTE as chaves e a estrutura definida no arquivo `learning_schema.json` lido no seu contexto. (Escreva `[]` se vazio. Sem blocos de código markdown).\n2. Crie o arquivo `.vitalia/temp_decisions.json` baseado ESTRITAMENTE no `decision_schema.json`. (Escreva `[]` se vazio. Sem blocos markdown).\n3. Crie arquivos `.txt` simples para blindar quebras de shell:\n   - `.vitalia/temp_task.txt` (Nome da feature)\n   - `.vitalia/temp_p0.txt` (P0 aprovado)\n   - `.vitalia/temp_summary.txt` (Resumo)\n\n4. Execute o motor lendo os arquivos gerados:\n```bash\npython3 {{VITALIA_KIT_DIR}}/src/vitalia_context_engine.py --action end --task \"$(cat .vitalia/temp_task.txt 2>/dev/null || echo 'Sem tarefa')\" --p0 \"$(cat .vitalia/temp_p0.txt 2>/dev/null || echo 'Sem P0')\" --summary \"$(cat .vitalia/temp_summary.txt 2>/dev/null || echo '')\" --learnings-json \"$(cat .vitalia/temp_learnings.json 2>/dev/null || echo '[]')\" --decisions-json \"$(cat .vitalia/temp_decisions.json 2>/dev/null || echo '[]')\"\n```\n\n5. Após o comando rodar com sucesso, exclua APENAS os 5 arquivos temporários criados neste processo. NENHUM outro arquivo do repositório deve ser excluído.\n\n### 📦 Fase 3 — Commit do Repositório Raiz\n\n1. Limpe / verifique a raiz: `git status`\n2. Commit: `git add . && git commit -m \"chore(session): encerramento de sessão\"`\n*(Lembre-se: `.vitalia/memory/session/` é ignorado no repositório raiz e não será commitado aqui).*\n\n### 🗂️ Fase 4 — Encerramento\n\nExiba para o usuário:\n`✅ Shard local atualizado. Rode /vitalia-session-consolidate para sincronizar as memórias (learnings/decisions) e renderizar o Dashboard na nuvem.`\n"
+    },
+    "guardian_json": {
+      "schema_version": "1.0",
+      "workflow": "session-end",
+      "pruning_applied": false,
+      "estimated_tokens": 5954,
+      "sources": {
+        "constitution": {
+          "schema_type": "constitution",
+          "schema_version": "0.0.1",
+          "domain_index": {
+            "PURPOSE": [
+              "P00"
+            ],
+            "GOVERNANCE": [
+              "P01",
+              "P02",
+              "P05"
+            ],
+            "GROUNDING": [
+              "P03"
+            ],
+            "INFRASTRUCTURE": [
+              "P04",
+              "P16"
+            ],
+            "SECRETS": [
+              "P06"
+            ],
+            "PRIVACY_DATA_VAULT": [
+              "P07"
+            ],
+            "AGENT_SECURITY": [
+              "P08",
+              "P12",
+              "P13"
+            ],
+            "CLINICAL_SAFETY": [
+              "P09",
+              "P14"
+            ],
+            "DIDACTIC_ENGINEERING": [
+              "P10"
+            ],
+            "HARDWARE_AGNOSTICISM": [
+              "P11"
+            ],
+            "OBSERVABILITY": [
+              "P15"
+            ],
+            "REGULATORY_COMPLIANCE": [
+              "P17"
+            ]
+          },
+          "principles": {
+            "P00": {
+              "name": "Purpose Arbiter — Human Wellbeing First",
+              "domain": "PURPOSE",
+              "severity": "BLOCKING",
+              "rule": "Toda decisão técnica serve ao bem-estar de quem usa, de quem cuida e de quem constrói. Quando artigos colidirem ou caso não previsto surgir, este princípio é o critério de desempate inviolável.\n",
+              "rationale": "Tecnologia a serviço do bem-estar humano. Nenhuma pressão de prazo suspende este árbitro. Fonte: architect-constitution.md Art. 0.\n",
+              "validator": "manual"
+            },
+            "P01": {
+              "name": "SDD Pipeline Inviolability",
+              "domain": "GOVERNANCE",
+              "severity": "BLOCKING",
+              "rule": "Nunca implementar código sem tasks.md aprovado. Pipeline obrigatório: specify → plan → tasks → implement → converge. Em domínios de saúde, spec inclui o medical-gate (P09) antes do plan.\n",
+              "rationale": "Código sem spec é dívida técnica não rastreável. O Task Verifier garante que cada linha tem origem em requisito aprovado pelo usuário.\n",
+              "validator": "/vitalia-task-verifier"
+            },
+            "P02": {
+              "name": "User-Centric Validation & Impact Declaration",
+              "domain": "GOVERNANCE",
+              "severity": "WARNING",
+              "rule": "Toda proposta técnica declara o impacto ao usuário final. Antes de qualquer spec, validar: Multi-Tenancy, RBAC, LGPD/HIPAA, Performance (N+1), Segurança (input validation). LGPD/HIPAA ativa P07 e P09.\n",
+              "rationale": "Decisões sem âncora no usuário produzem sistemas corretos funcionalmente mas incorretos em valor entregue.\n",
+              "validator": "hooks/guardian_context.py"
+            },
+            "P03": {
+              "name": "External Verification Protocol (Grounding)",
+              "domain": "GROUNDING",
+              "severity": "WARNING",
+              "rule": "Versões de pacotes, endpoints de API, preços cloud, referências científicas e CVEs exigem busca externa prévia e Rastro de Pesquisa no artefato. Comportamento real de APIs validado antes de implementar.\n",
+              "rationale": "LLMs alucinam versões e URLs. Em saúde, um pacote desatualizado pode ter consequências clínicas. \"Confiar sem verificar\" é falha.\n",
+              "validator": "hooks/guardian_context.py"
+            },
+            "P04": {
+              "name": "Timestamp & GMT-04:00 Integrity",
+              "domain": "INFRASTRUCTURE",
+              "severity": "WARNING",
+              "rule": "Todo arquivo criado ou modificado contém na primeira linha o cabeçalho `nome_arquivo | Vitalia SDD v0.6.0 | DD-MM-YYYY HH:MM(GMT-04:00)`. Em arquivos Markdown (.md), a primeira linha contém o comentário HTML `<!-- nome_arquivo | Vitalia SDD v0.6.0 | DD-MM-YYYY HH:MM(GMT-04:00) -->` e a segunda linha contém obrigatoriamente a repetição em formato visível: `> **nome_arquivo | Vitalia SDD v0.6.0 | DD-MM-YYYY HH:MM(GMT-04:00)**`. Fuso imutável America/Cuiaba (GMT-04:00) — sem exceções e sem DST.\n",
+              "rationale": "Rastreabilidade exige que qualquer artefato possa ser datado. A repetição visível em .md assegura legibilidade tanto no código quanto no modo renderizado da IDE. GMT-04:00 imutável garante consistência entre máquinas em fusos distintos.\n",
+              "validator": "maintenance/header_stamp.py"
+            },
+            "P05": {
+              "name": "Test-First Development (TDD Inviolável)",
+              "domain": "GOVERNANCE",
+              "severity": "BLOCKING",
+              "rule": "Nenhuma lógica em services/, core/, domain/ ou use_cases/ é implementada sem teste escrito antes (Red phase confirmada). Cobertura mínima: Services 90%, Views 70%, Utils 80%, Models 85%. Tool Hook: escrita em .py produtivo bloqueada sem teste no histórico.\n",
+              "rationale": "Código sem teste é dívida com data de validade curta. Red phase confirma que o teste realmente verifica o comportamento esperado.\n",
+              "validator": "hooks/llm_judge.py --mode after_task"
+            },
+            "P06": {
+              "name": "Secrets Never in Git",
+              "domain": "SECRETS",
+              "severity": "BLOCKING",
+              "rule": "Credenciais, chaves e senhas existem apenas em .env locais ou vaults. Nenhum segredo entra em commits, logs ou outputs de console. Migrações de banco são não-destrutivas e idempotentes.\n",
+              "rationale": "Segredo em git é permanente — o histórico não apaga. Em sistemas de saúde com PHI/PII, constitui breach reportável (LGPD Art. 48).\n",
+              "validator": "manual"
+            },
+            "P07": {
+              "name": "Privacy by Design & Data Vault (LGPD/HIPAA)",
+              "domain": "PRIVACY_DATA_VAULT",
+              "severity": "BLOCKING",
+              "rule": "Dado de saúde pertence ao Participante. PHI/PII criptografado em repouso (nível de campo). Logs sanitizados — sem dado de saúde em texto puro. Queries sempre com user_id + organization_id. Suporte a exclusão auditável (LGPD Art. 18).\n",
+              "rationale": "LGPD Art. 11 exige base legal para dados de saúde. Multi-tenancy sem filtro é vulnerabilidade CRÍTICA. Tolerância zero.\n",
+              "validator": "hooks/llm_judge.py --mode after_task"
+            },
+            "P08": {
+              "name": "Smart Routing & Minimum Privilege per Agent",
+              "domain": "AGENT_SECURITY",
+              "severity": "INFO",
+              "rule": "Identificar silenciosamente o domínio e ativar especialista conforme AGENTS.md. Agentes não acessam ferramentas fora de seu domínio declarado (default-deny — OWASP LLM06:2025). Override: @agente ou menção explícita do usuário.\n",
+              "rationale": "Excessive Agency (OWASP LLM06:2025) é risco crítico em sistemas multi-agente. Mínimo privilégio reduz superfície de ataque.\n",
+              "validator": "hooks/guardian_context.py"
+            },
+            "P09": {
+              "name": "Medical Safety Gate (HITL Triplo)",
+              "domain": "CLINICAL_SAFETY",
+              "severity": "BLOCKING",
+              "rule": "IA gera → DRAFT. Especialista científico → REVIEW. Profissional de saúde humano → ACTIVE (único estado publicável ao usuário final). Disclaimer educacional obrigatório. Gate ativado por: diagnóstico, dosagens, biomarcadores, protocolos, nutrição, zonas de treino.\n",
+              "rationale": "IA alucina. Em saúde, isso tem consequências à vida humana. HITL médico é requisito ético, regulatório (EU AI Act Art. 14) e de responsabilidade civil. Não é opcional.\n",
+              "validator": "/vitalia-task-verifier"
+            },
+            "P10": {
+              "name": "Didactics-First & Automation as Guardian",
+              "domain": "DIDACTIC_ENGINEERING",
+              "severity": "WARNING",
+              "rule": "100% dos scripts Python implementam --help didático com exemplos. Código contém comentários inline acessíveis a desenvolvedores júnior. Processos repetitivos têm scripts — processo manual é falha esperando.\n",
+              "rationale": "O Kit é usado por pesquisadores sem background de engenharia. Código sem --help é inacessível e gera suporte manual evitável.\n",
+              "validator": "hooks/llm_judge.py --mode after_task"
+            },
+            "P11": {
+              "name": "Hardware-Agnostic LLM Routing, Data Contracts & Machine Identity",
+              "domain": "HARDWARE_AGNOSTICISM",
+              "severity": "BLOCKING",
+              "rule": "Nenhum nome de modelo LLM hardcoded — vem de .env (NO1_MODEL, NO2_MODEL, ROUTER_LLM_PROFILE etc.). Todo contrato de schema JSON no sistema deve seguir estritamente o subset OpenAPI 3.0 limpo, sendo terminantemente proibidos meta-campos incompatíveis com compiladores REST de LLM como '$schema', 'title' e 'additionalProperties: false'. Instâncias de runtime (.vitalia/*.json) são dados planos, nunca definições de schemas. Nenhum machine_id hardcoded — deriva de VITALIA_MACHINE_NAME env var ou socket.gethostname() via SHA256[:8]. Builds reprodutíveis: local = produção.\n",
+              "rationale": "Sistema opera em hardware heterogêneo (GTX 1060 6GB, RTX 3090, CPU-only). Hardcodar quebra silenciosamente em hardware diferente.\n",
+              "validator": "manual"
+            },
+            "P12": {
+              "name": "Agent Security — Prompt Injection & Output Validation",
+              "domain": "AGENT_SECURITY",
+              "severity": "BLOCKING",
+              "rule": "Todo input é potencialmente malicioso (OWASP LLM01:2025). Output de LLMs nunca executado sem validação de schema. System prompts são segredos (LLM07:2025). Agentes não executam ações destrutivas sem confirmação HITL. Stack trace nunca vaza para o cliente.\n",
+              "rationale": "Prompt Injection é risco #1 em sistemas agênticos (OWASP 2025). Indirect Injection via RAG é especialmente perigosa em healthcare.\n",
+              "validator": "hooks/llm_judge.py --mode after_task"
+            },
+            "P13": {
+              "name": "API Safety Gate",
+              "domain": "AGENT_SECURITY",
+              "severity": "BLOCKING",
+              "rule": "Nenhum endpoint de dado de saúde é público. Checklist obrigatório: autenticação JWT, autorização por recurso, rate limiting, validação de input via schema, filtro por organization_id, sem stack trace para o cliente (log interno + resposta genérica).\n",
+              "rationale": "Endpoints sem autenticação em sistemas de saúde violam LGPD e HIPAA. Autorização vs autenticação é o erro mais comum em APIs REST.\n",
+              "validator": "/vitalia-task-verifier"
+            },
+            "P14": {
+              "name": "Evidence Traceability & Clinical Data Lineage",
+              "domain": "CLINICAL_SAFETY",
+              "severity": "BLOCKING",
+              "rule": "Todo constraint médico (MC-NNN) carrega: identificador rastreável, fonte científica com nível (A=meta-análise, B=RCT, C=expert) e comentário no código. EU AI Act Art. 12: logs automáticos de inputs, outputs e ações humanas com timestamps.\n",
+              "rationale": "Explicabilidade jurídica exige raciocínio auditável. EU AI Act (vigência 02-08-2026) impõe data lineage obrigatório para high-risk AI.\n",
+              "validator": "/vitalia-task-verifier"
+            },
+            "P15": {
+              "name": "Observability & Structured Logging",
+              "domain": "OBSERVABILITY",
+              "severity": "WARNING",
+              "rule": "Structured logging obrigatório em serviços críticos. N+1 é falha de design — usar eager loading. Processamento pesado vai para filas (Redis Streams), não para o ciclo de request. Telemetria de agentes centralizada para rastreabilidade de inter-agent communication.\n",
+              "rationale": "Em sistemas multi-agente, falhas cascata são impossíveis de diagnosticar sem telemetria centralizada.\n",
+              "validator": "manual"
+            },
+            "P16": {
+              "name": "Artifact Integrity & Mermaid Defensive Programming",
+              "domain": "INFRASTRUCTURE",
+              "severity": "WARNING",
+              "rule": "Toda edição deixa o arquivo em estado válido sem regressões. Modificações parciais que tornam arquivos inconsistentes são vetadas. Mermaid: todos os labels de nodes e edges entre aspas duplas para prevenir quebra por caracteres especiais: (), [], |, {}. Históricos de sessão: inserção sempre no topo (cronologia reversa).\n",
+              "rationale": "Artefatos inconsistentes causam falhas silenciosas de integração. Mermaid quebra silenciosamente com parênteses em timestamps.\n",
+              "validator": "maintenance/header_stamp.py"
+            },
+            "P17": {
+              "name": "EU AI Act Compliance — High-Risk Healthcare AI",
+              "domain": "REGULATORY_COMPLIANCE",
+              "severity": "BLOCKING",
+              "rule": "Sistemas de IA em saúde são high-risk sob EU AI Act (vigente 02-08-2026). Obrigações: documentação técnica antes do deploy, sistema de gestão de risco documentado, logs automáticos (Art. 12), human oversight efetivo (Art. 14), quality management system. Penalty: até €15M ou 3% do faturamento global.\n",
+              "rationale": "Conformidade não é diferencial — é baseline legal. Produtos sem conformidade expõem pacientes a risco e a empresa a sanções graves.\n",
+              "validator": "manual"
+            }
+          }
+        },
+        "routing_table": {
+          "schema_type": "routing_table",
+          "schema_version": "0.0.1",
+          "agents": [
+            {
+              "id": "session-start",
+              "name": "Início de Sessão",
+              "command": "/vitalia-session-start",
+              "emoji": "🚀",
+              "gates": [
+                "route"
+              ],
+              "priority": 1,
+              "fallback": false,
+              "patterns": [
+                "iniciar sessão",
+                "começar",
+                "onde parei",
+                "cold start",
+                "retomar",
+                "abrir sessão",
+                "bom dia",
+                "vamos começar"
+              ],
+              "description": "Recupera contexto completo e apresenta P0. Usar quando o usuário quer explicitamente iniciar ou retomar uma sessão."
+            },
+            {
+              "id": "session-end",
+              "name": "Encerramento de Sessão",
+              "command": "/vitalia-session-end",
+              "emoji": "🏁",
+              "gates": [
+                "route"
+              ],
+              "priority": 1,
+              "patterns": [
+                "encerrar sessão",
+                "finalizar",
+                "salvar e sair",
+                "commitar contexto",
+                "fechar o dia",
+                "terminar"
+              ],
+              "description": "Reflexão, atualização 3-Tier, commit e shard."
+            },
+            {
+              "id": "session-consolidate",
+              "name": "Consolidação",
+              "command": "/vitalia-session-consolidate",
+              "emoji": "🔄",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "consolidar",
+                "sincronizar",
+                "push contexto",
+                "dashboard",
+                "atualizar readme",
+                "consolidar shards"
+              ],
+              "description": "Consolida shards e renderiza README visual do contexto."
+            },
+            {
+              "id": "brainstorming",
+              "name": "Brainstorming",
+              "command": "/vitalia-brainstorming",
+              "emoji": "🌀",
+              "gates": [
+                "route"
+              ],
+              "priority": 1,
+              "fallback": true,
+              "patterns": [
+                "brainstorming",
+                "explorar",
+                "pensar sobre",
+                "ideia",
+                "discutir",
+                "design thinking socrático",
+                "quero construir",
+                "como poderíamos"
+              ],
+              "description": "Supervisor do ciclo SDD. Fallback padrão: intenção vaga ou sem match → brainstorming socrático (C11)."
+            },
+            {
+              "id": "spec-specify",
+              "name": "Especificação",
+              "command": "/vitalia-spec-specify",
+              "emoji": "📋",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "especificar",
+                "criar spec",
+                "escrever requisitos",
+                "feature spec",
+                "nova feature",
+                "spec-specify"
+              ],
+              "description": "Traduz pedido em spec.md formal com FR-xxx, SC-xxx e Given/When/Then."
+            },
+            {
+              "id": "spec-plan",
+              "name": "Plano Técnico",
+              "command": "/vitalia-spec-plan",
+              "emoji": "🗺️",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "planejar",
+                "criar plano",
+                "arquitetura da feature",
+                "spec-plan",
+                "plan.md"
+              ],
+              "description": "Lê spec aprovada e propõe arquitetura técnica com decisões documentadas."
+            },
+            {
+              "id": "spec-tasks",
+              "name": "Tarefas",
+              "command": "/vitalia-spec-tasks",
+              "emoji": "✅",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "criar tasks",
+                "quebrar em tarefas",
+                "spec-tasks",
+                "tasks.md",
+                "tarefas atômicas"
+              ],
+              "description": "Converte plan.md aprovado em tasks.md com tarefas atômicas."
+            },
+            {
+              "id": "spec-implement",
+              "name": "Implementação",
+              "command": "/vitalia-spec-implement",
+              "emoji": "⚙️",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "implementar",
+                "codar",
+                "executar tasks",
+                "iniciar implementação",
+                "spec-implement"
+              ],
+              "description": "Executa rigorosamente o tasks.md aprovado."
+            },
+            {
+              "id": "task-verifier",
+              "name": "Verificador de Tarefas",
+              "command": "/vitalia-task-verifier",
+              "emoji": "🔍",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "verificar tasks",
+                "checar constituição",
+                "task-verifier",
+                "compliance",
+                "validar tarefas"
+              ],
+              "description": "Sub-agente que checa tasks.md contra a constitution antes da implementação."
+            },
+            {
+              "id": "analyze",
+              "name": "Análise",
+              "command": "/vitalia-analyze",
+              "emoji": "🔬",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "analisar",
+                "análise de consistência",
+                "verificar spec",
+                "gap análise"
+              ],
+              "description": "Análise read-only de consistência entre spec.md, plan.md e tasks.md."
+            },
+            {
+              "id": "review",
+              "name": "Revisão de Código",
+              "command": "/vitalia-review",
+              "emoji": "👁️",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "revisar código",
+                "code review",
+                "auditar",
+                "qualidade",
+                "review"
+              ],
+              "description": "Audita qualidade, arquitetura e segurança de arquivo ou diretório."
+            },
+            {
+              "id": "converge",
+              "name": "Convergência",
+              "command": "/vitalia-converge",
+              "emoji": "🎯",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "converge",
+                "reconciliar",
+                "tasks desatualizadas",
+                "código vs spec"
+              ],
+              "description": "Avalia código real contra spec/plan/tasks e reconcilia o tasks.md."
+            },
+            {
+              "id": "debug",
+              "name": "Debug",
+              "command": "/vitalia-debug",
+              "emoji": "🐛",
+              "gates": [
+                "route"
+              ],
+              "priority": 1,
+              "patterns": [
+                "debug",
+                "depurar",
+                "erro",
+                "bug",
+                "falha",
+                "não funciona",
+                "exception"
+              ],
+              "description": "Fluxo sistemático de depuração para isolar falhas."
+            },
+            {
+              "id": "continue",
+              "name": "Continuar",
+              "command": "/vitalia-continue",
+              "emoji": "▶️",
+              "gates": [
+                "route"
+              ],
+              "priority": 1,
+              "patterns": [
+                "continuar",
+                "retomar implementação",
+                "continue",
+                "próximo arquivo"
+              ],
+              "description": "Retoma implementação de feature ou arquivo com contexto completo."
+            },
+            {
+              "id": "clarify",
+              "name": "Clarificação",
+              "command": "/vitalia-clarify",
+              "emoji": "❓",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "clarificar",
+                "ambiguidade",
+                "dúvida na spec",
+                "clarify"
+              ],
+              "description": "Detecta e resolve ambiguidades no spec.md ativo."
+            },
+            {
+              "id": "pair",
+              "name": "Pair Programming",
+              "command": "/vitalia-pair",
+              "emoji": "👥",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "pair programming",
+                "parear",
+                "programar junto",
+                "chunk por chunk"
+              ],
+              "description": "Modo pair programming estruturado — propõe cada chunk."
+            },
+            {
+              "id": "adr",
+              "name": "ADR",
+              "command": "/vitalia-adr",
+              "emoji": "📐",
+              "gates": [
+                "route"
+              ],
+              "priority": 3,
+              "patterns": [
+                "ADR",
+                "decision record",
+                "decisão arquitetural",
+                "documentar decisão"
+              ],
+              "description": "Cria Architecture Decision Record de forma interativa."
+            },
+            {
+              "id": "release",
+              "name": "Release",
+              "command": "/vitalia-release",
+              "emoji": "🚢",
+              "gates": [
+                "route"
+              ],
+              "priority": 3,
+              "patterns": [
+                "release",
+                "publicar",
+                "changelog",
+                "versionar",
+                "tag"
+              ],
+              "description": "Prepara e executa processo de release com checklist e changelog."
+            },
+            {
+              "id": "medical-gate",
+              "name": "Medical Gate",
+              "command": "/vitalia-medical-gate",
+              "emoji": "🩺",
+              "gates": [
+                "route"
+              ],
+              "priority": 1,
+              "patterns": [
+                "clínico",
+                "diagnóstico",
+                "biomarcador",
+                "dosagem",
+                "HITL médico",
+                "risco clínico",
+                "protocolo médico",
+                "saúde",
+                "dado de saúde"
+              ],
+              "description": "Gate de segurança clínica — avalia risco e emite constraints HITL."
+            },
+            {
+              "id": "science-review",
+              "name": "Revisão Científica",
+              "command": "/vitalia-science-review",
+              "emoji": "🔭",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "revisão científica",
+                "evidência",
+                "nível de evidência",
+                "science-review",
+                "artigo científico"
+              ],
+              "description": "Coordena revisão científica de features antes de publicar."
+            },
+            {
+              "id": "vitalia-integrative-review",
+              "name": "Revisão Integrativa",
+              "command": "/vitalia-vitalia-integrative-review",
+              "emoji": "📚",
+              "gates": [
+                "route"
+              ],
+              "priority": 2,
+              "patterns": [
+                "revisão integrativa",
+                "PRISMA",
+                "Scopus",
+                "Web of Science",
+                "revisão de literatura"
+              ],
+              "description": "Workflow de revisão integrativa com PRISMA, Scopus e Web of Science."
+            },
+            {
+              "id": "skill-evaluation",
+              "name": "Avaliação de Skills",
+              "command": "/vitalia-skill-evaluation",
+              "emoji": "��",
+              "gates": [
+                "route"
+              ],
+              "priority": 3,
+              "patterns": [
+                "avaliar skill",
+                "gargalo",
+                "skill-evaluation",
+                "otimizar workflow"
+              ],
+              "description": "Analisa histórico da sessão para identificar gargalos e recomendar melhorias."
+            },
+            {
+              "id": "architect",
+              "name": "Vitalia Architect",
+              "command": "/vitalia-architect",
+              "emoji": "🏛️",
+              "gates": [
+                "route"
+              ],
+              "priority": 1,
+              "patterns": [
+                "arquiteto",
+                "architect",
+                "decisão arquitetural",
+                "regência",
+                "tech lead",
+                "governança",
+                "condução técnica",
+                "planejamento de turno"
+              ],
+              "description": "Regência do Tech Lead e Arquiteto de Soluções — consolida planos de turno, compliance constitucional e transições técnicas."
+            }
+          ]
+        },
+        "brainstorming_intents": {
+          "schema_type": "brainstorming_intents",
+          "schema_version": "0.0.1",
+          "domains": {
+            "estrategia_produto": {
+              "description": "Concepcao de novas funcionalidades, alinhamento de roadmap, proposta de valor e trade-offs de produto.",
+              "threshold": 0.8,
+              "p0_flag": false,
+              "utterances": [
+                "Quero criar uma nova funcionalidade no sistema",
+                "Preciso estruturar a ideia de um novo modulo",
+                "Como podemos desenhar a proposta deste produto?",
+                "Quero fazer um brainstorming de produto",
+                "Preciso decidir os trade-offs desta feature",
+                "Como posso melhorar a experiencia do usuario nesta tela?",
+                "Quero propor um novo fluxo de onboarding"
+              ]
+            },
+            "arquitetura_software": {
+              "description": "Decisões arquiteturais estruturantes, isolamento de dependências, padrões de design, regência do Tech Lead e compliance com princípios constitucionais.",
+              "threshold": 0.82,
+              "p0_flag": false,
+              "utterances": [
+                "Quero definir a arquitetura de software para este subsistema",
+                "Preciso desenhar o diagrama de componentes e fluxos técnicos",
+                "Como desacoplar a infraestrutura externa e migrar para filesystem puro?",
+                "Quero planejar o turno com a regência do Architect",
+                "Quero documentar um Architecture Decision Record (ADR)",
+                "Preciso isolar as dependências e criar um runtime idempotente"
+              ]
+            },
+            "educacao_workshop": {
+              "description": "Criacao de material didatico, estruturacao de cursos, workshops, apresentacoes academicas ou treinos.",
+              "threshold": 0.78,
+              "p0_flag": false,
+              "utterances": [
+                "Crie uma apresentacao sobre o kit para a universidade",
+                "Preciso de um roteiro de workshop tecnico",
+                "Como estruturar uma aula pratica sobre este tema?",
+                "Desenvolva um plano de ensino ou treinamento",
+                "Monte um material didatico sobre arquitetura de software",
+                "Quero criar um curso sobre desenvolvimento com IA",
+                "Preciso de slides para uma palestra academica"
+              ]
+            },
+            "saude_clinica": {
+              "description": "Sistemas medicos, manipulacao de dados de pacientes, algoritmos de suporte a decisao clinica e privacidade.",
+              "threshold": 0.85,
+              "p0_flag": true,
+              "utterances": [
+                "Desenvolver modulo de prontuario ou dados de saude",
+                "Integracao com exames ou biomarcadores",
+                "Analise de dados medicos ou diagnosticos",
+                "Sistema para uso por profissionais de saude em clinica",
+                "Tratamento de dados sensiveis de pacientes (LGPD/HIPAA)",
+                "Quero adicionar recomendacao de intensidade de treino",
+                "Preciso registrar frequencia cardiaca e calcular zonas de esforco"
+              ]
+            }
+          }
+        },
+        "context_learnings": [
+          {
+            "id": "311d5098",
+            "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+            "machine_id": "17a6f667",
+            "source_origin": "ai-control",
+            "category": "KIT",
+            "learning": "[KIT] Contratos OpenAPI 3.0 para Google Gemini REST: Schemas JSON validados por compiladores de modelos de fronteira rejeitam meta-campos Draft-07 como $schema, title no nó raiz e additionalProperties: false (gerando HTTP 400). Padrão estrito OpenAPI 3.0 limpo.",
+            "rationale": "Previne falhas de compilação de schema via chamadas de API em tempo de execução.",
+            "trigger_event": "session-end"
+          },
+          {
+            "id": "d8d29577",
+            "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+            "machine_id": "17a6f667",
+            "source_origin": "ai-control",
+            "category": "KIT",
+            "learning": "[KIT] Sub-Agente Nativo vs CLI Externo: A orquestração do SDD-Judge nativamente na IDE Antigravity elimina a necessidade de fatiamento de 400 tokens de VRAM e previne diluição de regras constitucionais.",
+            "rationale": "Janelas de contexto amplas com Sanduíche Constitucional mantêm atenção aos princípios e reduzem alucinações na auditoria.",
+            "trigger_event": "session-end"
+          },
+          {
+            "id": "353fca0f",
+            "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+            "machine_id": "17a6f667",
+            "source_origin": "ai-control",
+            "category": "PROJETO",
+            "learning": "[PROJETO] Governança Scaffold Puro e Convenção Sequencial: Estrutura specs/<NNN>-<slug>/ com 3 dígitos zero-padded e scaffold direto de source/ para ~/.vitalia/ garante reprodutibilidade e modularidade.",
+            "rationale": "Evita sobreposições e mantém a integridade de repositórios locais do kit.",
+            "trigger_event": "session-end"
+          }
+        ],
+        "context_decisions": [
+          {
+            "id": "a439a5bb",
+            "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+            "machine_id": "17a6f667",
+            "category": "ARQUITETURA",
+            "decision": "Executar o SDD-Judge como Sub-Agente nativo na IDE Antigravity com HITL soberano",
+            "rationale": "Permite auditoria em janela de 1M-2M tokens com Sanduíche Constitucional sem perda de regras e sem travar a IDE.",
+            "alternatives": [
+              "Executar script CLI sdd_judge.py via terminal externo com fatiamento de 400 tokens"
+            ]
+          },
+          {
+            "id": "ad0a2d82",
+            "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+            "machine_id": "17a6f667",
+            "category": "ARQUITETURA",
+            "decision": "Adotar Sanduíche Constitucional (Primacy Bias P00-P20 e Recency Checklist) e Inverted CoT",
+            "rationale": "Neutraliza attention loss em prompts longos e mitiga confirmação prematura via veredito emitido apenas ao final da crítica.",
+            "alternatives": [
+              "Prompt linear padrão com veredito no início"
+            ]
+          },
+          {
+            "id": "246ef7bd",
+            "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+            "machine_id": "17a6f667",
+            "category": "ARQUITETURA",
+            "decision": "Utilizar estritamente contratos JSON OpenAPI 3.0 puros (sem $schema, sem title e sem additionalProperties: false)",
+            "rationale": "Evita erros de compilação HTTP 400 no compilador REST do Google Gemini.",
+            "alternatives": [
+              "JSON Schema Draft-07 completo com meta-schemas"
+            ]
+          }
+        ]
+      },
+      "session_context": {
+        "user_input": "",
+        "cwd": "/home/andre/projetos/assistidos/vitalia-spec-kit",
+        "project_root": "/home/andre/projetos/assistidos/vitalia-spec-kit"
+      }
+    }
+  }
+}

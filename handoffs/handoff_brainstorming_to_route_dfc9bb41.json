@@ -1,0 +1,41 @@
+{
+  "$schema": "vitalia-handoff-v1.0.0",
+  "schema_type": "workflow_handoff",
+  "schema_version": "1.0.0",
+  "envelope": {
+    "handoff_id": "dfc9bb41-6b51-44a0-8e75-d6f91b700df1",
+    "created_at": "2026-11-04T21:58:16Z",
+    "ttl_seconds": 3600,
+    "source_workflow": "brainstorming",
+    "target_workflow": "route",
+    "direction": "forward",
+    "machine_id": "fc2313ad",
+    "status": "pending"
+  },
+  "intent": {
+    "intent_type": "brainstorming_to_route",
+    "source_input": "Construir o MVP do novo produto Vitalia SPEC Kit v0.0.1 com runtime autônomo, eliminando dependências de containers, podas de VRAM e resquícios legados conforme research-brainstorming.md",
+    "normalized_summary": "specs/002-universal-bootstrap-runtime/research-brainstorming.md",
+    "confidence": 1.0,
+    "match_level": "semantic",
+    "match_source": "routing_table.brainstorming",
+    "target_command": "/route",
+    "detected_domain": "arquitetura_software",
+    "pipeline_stage": "brainstorming",
+    "feature_context": "specs/002-universal-bootstrap-runtime"
+  },
+  "session_snapshot": {
+    "active_feature": "specs/002-universal-bootstrap-runtime",
+    "p0": "Transição de contexto determinística local",
+    "machine_id": "fc2313ad",
+    "env_summary": {
+      "python": "3.14.4"
+    }
+  },
+  "routing": {
+    "confirmed_by_user": true,
+    "confirmation_timestamp": "2026-11-04T21:58:16Z",
+    "suggested_command": "/route",
+    "fallback_used": false
+  }
+}
