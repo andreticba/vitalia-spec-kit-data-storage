@@ -1,0 +1,64 @@
+{
+  "workflow": "spec-tasks",
+  "timestamp": "2026-11-06T22:34:25.486206-04:00",
+  "machine_id": "42c8e746091f4155931b85aa0e00c75b",
+  "prompt": "",
+  "guardian_json": {
+    "schema_version": "1.0",
+    "workflow": "spec-tasks",
+    "sources": {
+      "profile": "default",
+      "status": "integrated_without_pruning"
+    }
+  },
+  "raw_toml_data": {
+    "description": "Converte o plan.md aprovado em tasks.md com tarefas atômicas T001 [P] [US1], fases estruturadas e MVP scope explícito.",
+    "meta": {
+      "version": "0.0.1",
+      "domain_gates": [],
+      "model_profile": "flash"
+    },
+    "hooks": {
+      "before": [
+        "python3 {{VITALIA_KIT_DIR}}/src/hooks/scan_environment.py"
+      ],
+      "after": []
+    },
+    "tools": {
+      "required": [
+        "write_file",
+        "read_file"
+      ],
+      "optional": []
+    },
+    "context": {
+      "reads": [
+        ".vitalia/feature.json",
+        "specs/*/spec.md",
+        "specs/*/plan.md",
+        "specs/*/research.md",
+        "specs/*/data-model.md"
+      ],
+      "writes": [
+        "specs/*/tasks.md"
+      ]
+    },
+    "variables": {
+      "input": [
+        "args",
+        "feature_directory"
+      ],
+      "output": [
+        "tasks_file",
+        "task_count",
+        "mvp_task_count"
+      ]
+    },
+    "transport": {
+      "preferred": "filesystem",
+      "file_path": ".vitalia/pipeline.json",
+      "session_shard": true,
+      "prompt": "## User Input\n\n```text\n{{args}}\n```\n\n---\n\n## Propósito\n\nConverter o `plan.md` aprovado em um `tasks.md` com tarefas atômicas,\nrastreáveis e com dependências explícitas. Cada tarefa é mapeada a uma\nUser Story da spec.\n\n---\n\n## Comportamento\n\n### Passo 1: Verificar hooks `before_tasks`\n\nSe `.vitalia/extensions.yml` existir, executar hooks em `hooks.before_tasks`.\n\n### Passo 2: Carregar artefatos\n\n- **Obrigatório**: `plan.md`, `spec.md`\n- **Opcional**: `data-model.md`, `contracts/`, `research.md`\n\n### Passo 3: Extrair mapeamento\n\n1. Da `spec.md`: extrair cada User Story com prioridade (P1, P2...)\n2. Do `plan.md`: extrair stack, arquitetura, estrutura de arquivos, fases\n3. Mapear cada componente técnico à User Story que o exige\n4. Identificar dependências entre componentes\n5. Identificar tarefas paralelizáveis (arquivos diferentes, sem deps)\n\n### Passo 4: Gerar tasks.md\n\n#### FORMATO OBRIGATÓRIO de cada task:\n\n```\n- [ ] T### [P] [USN] Descrição clara com caminho/de/arquivo/exato\n```\n\n| Componente | Obrigatoriedade | Descrição |\n|---|---|---|\n| `- [ ]` | SEMPRE | Checkbox markdown |\n| `T###` | SEMPRE | ID sequencial 3 dígitos em ordem de execução |\n| `[P]` | QUANDO paralelizável | Sem dependências com tasks incompletas |\n| `[USN]` | APENAS nas fases de US | Rastreia qual User Story esta task serve |\n| Descrição com caminho | SEMPRE | Ação clara com caminho de arquivo exato |\n\n**Corretos**:\n```\n- [ ] T001 Criar estrutura de diretórios conforme plan.md\n- [ ] T005 [P] [US1] Implementar rota GET /items em backend/routes/items.py\n- [ ] T006 [P] [US1] Criar testes em backend/tests/test_items.py\n- [ ] T007 [US1] Integrar rota em backend/main.py\n```\n\n**Errados**:\n```\n- [ ] Criar rota               ← sem ID e sem caminho\n- T005 [US1] Criar modelo      ← sem checkbox\n- [ ] T005 [US1] Criar modelo  ← sem caminho de arquivo\n```\n\n#### ESTRUTURA DE FASES:\n\n```markdown\n# Tasks: [FEATURE]\n\n**Spec**: [link] | **Plan**: [link]\n**Gerado em**: [DATA]\n\n---\n\n## MVP Scope\n\n> Implementar **Phase 1 + Phase 2 + Phase 3 (US1)** entrega produto funcionando.\n> Phases adicionais são incrementos opcionais.\n\n---\n\n## Phase 0: Grounding & Environment\n\n*Verificações de ambiente e grounding ANTES de qualquer implementação. Sem label de US.*\n*Adaptar T000-D conforme libs citadas na spec. Para projetos sem venv (ex: tooling puro), marcar T000-A/B como N/A.*\n\n- [ ] T000-A Ativar venv: `source .venv/bin/activate` (ou equivalente do projeto)\n- [ ] T000-B Verificar versão Python do venv (não do sistema): `python --version`\n- [ ] T000-C Verificar deps instaladas vs requirements.txt: `pip list --outdated` ou equivalente\n- [ ] T000-D [Para cada lib externa na spec] Verificar versão atual em pypi.org\n- [ ] T000-E Verificar conflitos de compatibilidade entre libs: `pip check`\n\n---\n\n## Phase 1: Setup\n\n*Inicialização do ambiente. Sem label de US.*\n\n- [ ] T001 [descrição com caminho]\n\n---\n\n## Phase 2: Foundational\n\n*Dependências bloqueantes. Sem label de US.*\n\n- [ ] T003 [P] [descrição]\n\n---\n\n## Phase 3: User Story 1 — [Título da US1]\n\n**Story Goal**: [O que esta fase entrega ao usuário]\n**Independent Test**: [Como validar isoladamente]\n**Referência**: FR-001, FR-002\n\n- [ ] T005 [P] [US1] [descrição com caminho]\n- [ ] T006 [P] [US1] [descrição com caminho]\n- [ ] T007 [US1] [descrição com caminho — integração]\n\n---\n\n## Phase N: Polish & Cross-Cutting\n\n*Qualidade, performance, documentação. Sem label de US.*\n\n---\n\n## Dependency Graph\n\n```\nPhase 1 → Phase 2 → Phase 3 (US1) → Phase N\n                  ↘ Phase 4 (US2) ↗\n```\n\n## Parallel Execution\n\nTasks marcadas [P] dentro da mesma fase podem ser executadas simultaneamente.\n```\n\n### Passo 5: Handoff para Auditoria Constitucional (/vitalia-task-verifier)\n\n> ⛔ REGRA INVIOLÁVEL DA IA: O campo `hooks.after` é intencionalmente vazio. NUNCA execute o `sdd_judge` ou qualquer validador de tarefas por conta própria neste comando. A auditoria de tarefas pertence EXCLUSIVAMENTE ao workflow `/vitalia-task-verifier` (Sub-Agente Red Team). Seu papel neste workflow encerra-se com a escrita do `tasks.md` e a apresentação do relatório de handoff.\n\nAo concluir a escrita do `tasks.md`, **NÃO** realize auto-aprovação de tarefas.\nO pipeline desacopla o momento criativo do planejamento da auditoria de integridade.\n\nApresente o resumo das tarefas geradas e oriente expressamente o desenvolvedor:\n\"Tarefas decompostas com sucesso em `specs/{FEATURE}/tasks.md`.\nPróximo passo: execute `/vitalia-task-verifier` para realizar a auditoria adversarial das tarefas, gerar o `Relatório de inspeção.md` e obter a aprovação constitucional antes de implementar.\"\n\n### Passo 6: Relatório de conclusão\n\n```\nTasks geradas: N total\n  Phase 1 (Setup): N tasks\n  Phase 2 (Foundational): N tasks\n  Phase 3 (US1): N tasks, M paralelizáveis\n  Phase N (Polish): N tasks\n\nMVP scope: Phase 1 + 2 + 3 = N tasks\nParalelismo: M tasks marcadas [P]\n\nFRs cobertos: FR-001 ✅, FR-002 ✅\nFRs sem cobertura: (nenhum) / FR-XXX ⚠️\n\nPróximo passo: /vitalia-task-verifier (Auditoria Constitucional e HITL)\n```\n\n---\n\n## Princípios\n\n- **Toda task tem ID e caminho** — sem IDs não há rastreabilidade\n- **Organização por User Story** — entrega incremental e testagem independente\n- **[P] é honesto** — marcar paralelizável SOMENTE sem dependências pendentes\n- **MVP explícito** — mínimo viável declarado antes do usuário ler tudo\n- **Fases Setup e Foundational sem US** — deps compartilhadas não pertencem a nenhuma história\n\n---\n\n## Done When\n\n- [ ] tasks.md criado com todas as fases e MVP scope\n- [ ] Dependency Graph e Parallel Execution documentados\n- [ ] Hook /vitalia-spec-analyze disparado ou anunciado\n- [ ] Relatório entregue\n"
+    }
+  }
+}
