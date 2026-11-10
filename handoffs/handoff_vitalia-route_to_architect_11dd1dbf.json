@@ -1,0 +1,41 @@
+{
+  "$schema": "vitalia-handoff-v1.0.0",
+  "schema_type": "workflow_handoff",
+  "schema_version": "1.0.0",
+  "envelope": {
+    "handoff_id": "11dd1dbf-2d75-45aa-8322-471777643edb",
+    "created_at": "2026-11-08T22:07:11Z",
+    "ttl_seconds": 3600,
+    "source_workflow": "vitalia-route",
+    "target_workflow": "architect",
+    "direction": "forward",
+    "machine_id": "b7ad5674",
+    "status": "consumed"
+  },
+  "intent": {
+    "intent_type": "route_dispatch",
+    "source_input": "Executar Spec 002 unificada em source/ fielmente a .vitalia/memory/data_storage/research/anchor-research-brainstorming-002-003.md e specs/002-universal-bootstrap-runtime/research-brainstorming.md (validação E2E Opção A em WSL2/zsh)",
+    "normalized_summary": "specs/002-universal-bootstrap-runtime/research-brainstorming.md",
+    "confidence": 1.0,
+    "match_level": "semantic",
+    "match_source": "routing_table.vitalia-route",
+    "target_command": "/architect",
+    "detected_domain": "arquitetura_software",
+    "pipeline_stage": "brainstorming",
+    "feature_context": "specs/002-universal-bootstrap-runtime"
+  },
+  "session_snapshot": {
+    "active_feature": "specs/002-universal-bootstrap-runtime",
+    "p0": "Transição de contexto determinística local",
+    "machine_id": "b7ad5674",
+    "env_summary": {
+      "python": "3.14.4"
+    }
+  },
+  "routing": {
+    "confirmed_by_user": true,
+    "confirmation_timestamp": "2026-11-08T22:07:11Z",
+    "suggested_command": "/architect",
+    "fallback_used": false
+  }
+}

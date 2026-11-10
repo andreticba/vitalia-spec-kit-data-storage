@@ -1,0 +1,25 @@
+---
+name: vitalia-judge
+description: >
+  Auditoria adversarial constitucional de artefatos SDD via Sub-Agente SDD-Judge nativo na IDE Antigravity com Sanduíche Constitucional e aprovação HITL soberana.
+---
+<!-- SKILL.md | Vitalia SPEC Kit v0.0.1 | 02-11-2026 23:25(GMT-04:00) -->
+<!-- Source: /home/andre/.vitalia/extensions/judge.toml -->
+
+# Vitalia: judge
+
+Ao acionar este comando:
+
+1. Execute o script nativo para invocar os hooks e iniciar o processo de extração de contexto:
+   ```bash
+   python3 /home/andre/.vitalia/src/vitalia_hook_runner.py /home/andre/.vitalia/extensions/judge.toml --phase before --args="{{args}}"
+   ```
+2. O script ejetará no stdout um **Stub JSON**. Extraia o caminho contido no campo `workflow_context_file`.
+3. Utilize a ferramenta `view_file` para ler o arquivo JSON físico referenciado.
+4. O arquivo lido conterá duas chaves fundamentais: `prompt` e `guardian_json`.
+5. **Diretrizes de Comportamento e Execução (MANDATÓRIO):**
+   - O `prompt` contém a sua **missão principal, passos de execução e formato de interação**. Ele é o seu objetivo absoluto para esta ação.
+   - O `guardian_json` contém o **contexto operacional dinâmico** injetado para o seu workflow (Constituição do projeto, Tabelas de Roteamento, Catálogo de Agentes, etc.).
+   - Execute rigorosamente o protocolo adversarial do SDD-Judge: Sanduíche Constitucional, Inverted Chain-of-Thought (Critique-First ➔ Verdict-Last) e Matriz de Confronto 1-a-1.
+   - Emita o artefato físico `specs/{feature}/Relatório de Inspeção - {fase}.md`.
+   - Pause a execução no chat e exija a confirmação humana explícita (HITL Soberano).

@@ -1,0 +1,41 @@
+{
+  "$schema": "vitalia-handoff-v1.0.0",
+  "schema_type": "workflow_handoff",
+  "schema_version": "1.0.0",
+  "envelope": {
+    "handoff_id": "0d6c24cf-950d-40bd-a256-b3f0ca189a28",
+    "created_at": "2026-11-08T22:22:31Z",
+    "ttl_seconds": 3600,
+    "source_workflow": "architect",
+    "target_workflow": "spec-specify",
+    "direction": "forward",
+    "machine_id": "b7ad5674",
+    "status": "consumed"
+  },
+  "intent": {
+    "intent_type": "sdd_pipeline_advance",
+    "source_input": "Formalizar spec.md da Spec 002 (specs/002-universal-bootstrap-runtime/research-brainstorming.md, regencia-architect-plano-turno.md e anchor-research-brainstorming-002-003.md)",
+    "normalized_summary": "specs/002-universal-bootstrap-runtime/research-brainstorming.md",
+    "confidence": 1.0,
+    "match_level": "semantic",
+    "match_source": "routing_table.architect",
+    "target_command": "/spec-specify",
+    "detected_domain": "arquitetura_software",
+    "pipeline_stage": "brainstorming",
+    "feature_context": "specs/002-universal-bootstrap-runtime"
+  },
+  "session_snapshot": {
+    "active_feature": "specs/002-universal-bootstrap-runtime",
+    "p0": "Transição de contexto determinística local",
+    "machine_id": "b7ad5674",
+    "env_summary": {
+      "python": "3.14.4"
+    }
+  },
+  "routing": {
+    "confirmed_by_user": true,
+    "confirmation_timestamp": "2026-11-08T22:22:31Z",
+    "suggested_command": "/spec-specify",
+    "fallback_used": false
+  }
+}
