@@ -1,0 +1,41 @@
+{
+  "$schema": "vitalia-handoff-v1.0.0",
+  "schema_type": "workflow_handoff",
+  "schema_version": "1.0.0",
+  "envelope": {
+    "handoff_id": "7e89fe02-70dc-44b6-9bcc-7a1688f105a3",
+    "created_at": "2026-11-11T10:07:30Z",
+    "ttl_seconds": 3600,
+    "source_workflow": "brainstorming",
+    "target_workflow": "route",
+    "direction": "forward",
+    "machine_id": "7f367bd3",
+    "status": "consumed"
+  },
+  "intent": {
+    "intent_type": "brainstorming_to_route",
+    "source_input": "A correção do kit do último turno foi bem sucedida, mas na inicialização da sessão via session-start ainda recebo erros e o LLM tenta a instalação novamente do kit global. Identifiquei no primeiro erro que o comando tenta usar o python no diretório local do projeto ao invés de usar o ambiente virtual criado durante a instalação.",
+    "normalized_summary": "specs/005-runtime-discrepancy-and-dual-venv/research-brainstorming.md",
+    "confidence": 1.0,
+    "match_level": "semantic",
+    "match_source": "routing_table.brainstorming",
+    "target_command": "/route",
+    "detected_domain": "software_architecture",
+    "pipeline_stage": "brainstorming",
+    "feature_context": "specs/005-runtime-discrepancy-and-dual-venv"
+  },
+  "session_snapshot": {
+    "active_feature": "specs/005-runtime-discrepancy-and-dual-venv",
+    "p0": "Transição de contexto determinística local",
+    "machine_id": "7f367bd3",
+    "env_summary": {
+      "python": "3.14.4"
+    }
+  },
+  "routing": {
+    "confirmed_by_user": true,
+    "confirmation_timestamp": "2026-11-11T10:07:30Z",
+    "suggested_command": "/route",
+    "fallback_used": false
+  }
+}

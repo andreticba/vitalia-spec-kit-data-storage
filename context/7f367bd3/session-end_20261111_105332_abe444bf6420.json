@@ -1,0 +1,771 @@
+{
+  "description": "Encerra a sessão em 4 fases: reflexão, atualização 3-Tier, commit e shard.",
+  "meta": {
+    "version": "0.0.1",
+    "hardware_profile": "frontier",
+    "domain_gates": []
+  },
+  "hooks": {
+    "before": [
+      "{{KIT_PYTHON}} {{VITALIA_KIT_DIR}}/src/hooks/scan_environment.py"
+    ],
+    "after": []
+  },
+  "tools": {
+    "required": [
+      "read_file",
+      "write_file",
+      "run_command"
+    ],
+    "optional": []
+  },
+  "context": {
+    "reads": [
+      ".vitalia/feature.json",
+      "{{VITALIA_KIT_DIR}}/src/schemas/learning_schema.json",
+      "{{VITALIA_KIT_DIR}}/src/schemas/decision_schema.json",
+      "{{VITALIA_KIT_DIR}}/src/schemas/grounding_domain_schema.json"
+    ],
+    "writes": []
+  },
+  "transport": {
+    "preferred": "filesystem",
+    "file_path": ".vitalia/pipeline.json",
+    "session_shard": true
+  },
+  "guardian": {
+    "yaml_sources": [
+      "constitution"
+    ],
+    "guardian_profile": "gp_session-end",
+    "prompt": "## User Input\n\n```text\n{{args}}\n```\n\n<!-- session-end.md | Atualizado pela Spec 3.1 -->\n\n# /session-end — Encerramento de Sessão (Spec 3.1)\n\n{{args}}\n\n---\n\n## Propósito\n\nReflexão, registro e commit local. **NÃO faz push** do repositório de contexto.\n\n---\n\n## Pipeline de Encerramento (As 4 Fases)\n\n### 🪞 Fase 1 — Extração Cognitiva e Reflexão (HITL)\n\n**Diretiva de Extração Rigorosa:**\nVocê atua como o consolidador da memória. Analise ativamente todo o seu histórico de chat (transcript) nesta sessão. Você DEVE extrair as decisões arquiteturais e os aprendizados, formatando-os ESTRITAMENTE conforme os moldes de `learning_schema.json` e `decision_schema.json` carregados no seu contexto.\n\n- **Filtro da Constituição:** Antes de registrar uma decisão, valide-a contra as regras presentes na sua `constitution` (injetada no `guardian_json`). Rejeite silenciosamente decisões que violem a constituição.\n- **Categorização:** Para aprendizados, use `[KIT]` para melhorias no ecossistema e `[PROJETO]` para a base de código local.\n\nApresente um resumo para o usuário aprovar:\n```markdown\n📋 Resumo da sessão\n\n**Atividades:**\n- [item]\n- [item]\n\n**Próximo Passo (P0):**\n- [item]\n\n**Aprendizados Identificados:**\n- [KIT] [descrição]\n- [PROJETO] [descrição]\n\n✅ Aprova este resumo? Ajuste o que desejar.\n```\n\n#### 1.1 Detecção de Novos Domínios de Grounding (após aprovação do resumo)\n\nApós o usuário aprovar o resumo, verifique se algum aprendizado `[KIT]` revela:\n- Um domínio de risco externo NÃO coberto na leitura do arquivo global `{{VITALIA_KIT_DIR}}/profiles/grounding_domains.yaml`\n- Uma fonte autoritativa melhor para um domínio já existente\n\nSe sim, para cada domínio/fonte nova detectada:\n1. Anunciar ao usuário: `\"Novo domínio de grounding identificado: [X] — adicionar ao repositório local?\"`\n2. Se aprovado, fazer **append** em `.vitalia/memory/session/data/grounding-domains.jsonl`, preenchendo as variáveis rigorosamente de acordo com o `grounding_domain_schema.json` carregado no seu contexto:\n```bash\necho '{\"id\":\"<sha256[:16] do conteúdo>\",\"type\":\"new_domain\",\"scope\":null,\"domain\":\"<nome>\",\"description\":\"<desc>\",\"authoritative_sources\":[\"<url>\"],\"machine_id\":\"<id>\",\"timestamp\":\"<DD-MM-YYYY HH:MM(GMT-04:00)>\",\"reason\":\"<motivo>\"}' >> .vitalia/memory/session/data/grounding-domains.jsonl\n```\n3. **NÃO decidir** global vs local aqui — decisão de scope é do `/vitalia-session-consolidate`\n4. **NÃO editar** views nem o yaml global.\n\n### 🧠 Fase 2 — Atualização Estruturada do Shard e Dados (via Motor)\n\nApós a aprovação, não escreva nos arquivos YAML ou JSONL diretamente. Extraia os dados e delegue a persistência ao motor de contexto.\n\n1. Crie o arquivo `.vitalia/temp_learnings.json` contendo a array JSON dos aprendizados. Utilize ESTRITAMENTE as chaves e a estrutura definida no arquivo `learning_schema.json` lido no seu contexto. (Escreva `[]` se vazio. Sem blocos de código markdown).\n2. Crie o arquivo `.vitalia/temp_decisions.json` baseado ESTRITAMENTE no `decision_schema.json`. (Escreva `[]` se vazio. Sem blocos markdown).\n3. Crie arquivos `.txt` simples para blindar quebras de shell:\n   - `.vitalia/temp_task.txt` (Nome da feature)\n   - `.vitalia/temp_p0.txt` (P0 aprovado)\n   - `.vitalia/temp_summary.txt` (Resumo)\n\n4. Execute o motor lendo os arquivos gerados:\n```bash\n{{KIT_PYTHON}} {{VITALIA_KIT_DIR}}/src/vitalia_context_engine.py --action end --task \"$(cat .vitalia/temp_task.txt 2>/dev/null || echo 'Sem tarefa')\" --p0 \"$(cat .vitalia/temp_p0.txt 2>/dev/null || echo 'Sem P0')\" --summary \"$(cat .vitalia/temp_summary.txt 2>/dev/null || echo '')\" --learnings-json \"$(cat .vitalia/temp_learnings.json 2>/dev/null || echo '[]')\" --decisions-json \"$(cat .vitalia/temp_decisions.json 2>/dev/null || echo '[]')\"\n```\n\n5. Após o comando rodar com sucesso, exclua APENAS os 5 arquivos temporários criados neste processo. NENHUM outro arquivo do repositório deve ser excluído.\n\n### 📦 Fase 3 — Commit do Repositório Raiz\n\n1. Limpe / verifique a raiz: `git status`\n2. Commit: `git add . && git commit -m \"chore(session): encerramento de sessão\"`\n*(Lembre-se: `.vitalia/memory/session/` é ignorado no repositório raiz e não será commitado aqui).*\n\n### 🗂️ Fase 4 — Encerramento\n\nExiba para o usuário:\n`✅ Shard local atualizado. Rode /vitalia-session-consolidate para sincronizar as memórias (learnings/decisions) e renderizar o Dashboard na nuvem.`\n",
+    "hardware_profile": "frontier"
+  },
+  "guardian_json": {
+    "schema_version": "0.0.1",
+    "workflow": "session-end",
+    "timestamp": "11-11-2026 10:53:32(GMT-04:00)",
+    "sources": {
+      "constitution": {
+        "schema_type": "constitution",
+        "schema_version": "0.0.1",
+        "domain_index": {
+          "PURPOSE": [
+            "P00"
+          ],
+          "GOVERNANCE": [
+            "P01",
+            "P02",
+            "P05"
+          ],
+          "GROUNDING": [
+            "P03"
+          ],
+          "INFRASTRUCTURE": [
+            "P04",
+            "P16"
+          ],
+          "SECRETS": [
+            "P06"
+          ],
+          "PRIVACY_DATA_VAULT": [
+            "P07"
+          ],
+          "AGENT_SECURITY": [
+            "P08",
+            "P12",
+            "P13"
+          ],
+          "CLINICAL_SAFETY": [
+            "P09",
+            "P14"
+          ],
+          "DIDACTIC_ENGINEERING": [
+            "P10"
+          ],
+          "HARDWARE_AGNOSTICISM": [
+            "P11"
+          ],
+          "OBSERVABILITY": [
+            "P15"
+          ],
+          "REGULATORY_COMPLIANCE": [
+            "P17"
+          ]
+        },
+        "principles": {
+          "P00": {
+            "name": "Purpose Arbiter — Human Wellbeing First",
+            "domain": "PURPOSE",
+            "severity": "BLOCKING",
+            "rule": "Toda decisão técnica serve ao bem-estar de quem usa, de quem cuida e de quem constrói. Quando artigos colidirem ou caso não previsto surgir, este princípio é o critério de desempate inviolável.\n",
+            "rationale": "Tecnologia a serviço do bem-estar humano. Nenhuma pressão de prazo suspende este árbitro. Fonte: architect-constitution.md Art. 0.\n",
+            "validator": "manual"
+          },
+          "P01": {
+            "name": "SDD Pipeline Inviolability",
+            "domain": "GOVERNANCE",
+            "severity": "BLOCKING",
+            "rule": "Nunca implementar código sem tasks.md aprovado. Pipeline obrigatório: specify → plan → tasks → implement → converge. Em domínios de saúde, spec inclui o medical-gate (P09) antes do plan.\n",
+            "rationale": "Código sem spec é dívida técnica não rastreável. O Task Verifier garante que cada linha tem origem em requisito aprovado pelo usuário.\n",
+            "validator": "/vitalia-task-verifier"
+          },
+          "P02": {
+            "name": "User-Centric Validation & Impact Declaration",
+            "domain": "GOVERNANCE",
+            "severity": "WARNING",
+            "rule": "Toda proposta técnica declara o impacto ao usuário final. Antes de qualquer spec, validar: Multi-Tenancy, RBAC, LGPD/HIPAA, Performance (N+1), Segurança (input validation). LGPD/HIPAA ativa P07 e P09.\n",
+            "rationale": "Decisões sem âncora no usuário produzem sistemas corretos funcionalmente mas incorretos em valor entregue.\n",
+            "validator": "hooks/guardian_context.py"
+          },
+          "P03": {
+            "name": "External Verification Protocol (Grounding)",
+            "domain": "GROUNDING",
+            "severity": "WARNING",
+            "rule": "Versões de pacotes, endpoints de API, preços cloud, referências científicas e CVEs exigem busca externa prévia e Rastro de Pesquisa no artefato. Comportamento real de APIs validado antes de implementar.\n",
+            "rationale": "LLMs alucinam versões e URLs. Em saúde, um pacote desatualizado pode ter consequências clínicas. \"Confiar sem verificar\" é falha.\n",
+            "validator": "hooks/guardian_context.py"
+          },
+          "P04": {
+            "name": "Timestamp & GMT-04:00 Integrity",
+            "domain": "INFRASTRUCTURE",
+            "severity": "WARNING",
+            "rule": "Todo arquivo criado ou modificado contém na primeira linha o cabeçalho `nome_arquivo | Vitalia SPEC Kit v0.0.1 | DD-MM-YYYY HH:MM(GMT-04:00)`. Em arquivos Markdown (.md), a primeira linha contém o comentário HTML `<!-- nome_arquivo | Vitalia SPEC Kit v0.0.1 | DD-MM-YYYY HH:MM(GMT-04:00) -->` e a segunda linha contém obrigatoriamente a repetição em formato visível: `> **nome_arquivo | Vitalia SPEC Kit v0.0.1 | DD-MM-YYYY HH:MM(GMT-04:00)**`. Fuso imutável America/Cuiaba (GMT-04:00) — sem exceções e sem DST.\n",
+            "rationale": "Rastreabilidade exige que qualquer artefato possa ser datado. A repetição visível em .md assegura legibilidade tanto no código quanto no modo renderizado da IDE. GMT-04:00 imutável garante consistência entre máquinas em fusos distintos.\n",
+            "validator": "maintenance/header_stamp.py"
+          },
+          "P05": {
+            "name": "Test-First Development & Behavioral Falsification Matrix (TDD Inviolável)",
+            "domain": "GOVERNANCE",
+            "severity": "BLOCKING",
+            "rule": "Nenhuma lógica produtiva, script ou contrato é implementado ou alterado sem teste automatizado correspondente classificado na Matriz de 4 Modalidades: (1) [TEST:NEW] (Código Novo): TDD Red-Green-Refactor executável comprovando falha antes do código; (2) [TEST:BUGFIX] (Correção de Bug): Bug Reproduction First — o teste DEVE reproduzir a falha no código atual e falhar antes do fix, tornando-se verde somente após a correção; (3) [TEST:REFACTOR] (Refatoração Pura): Behavioral Characterization — exercita entradas/saídas de negócio antes e depois da mudança garantindo zero perda funcional; (4) [TEST:MIGRATION] (Adaptação/Desacoplamento Arquitetural): Contract Preservation + Clean Purge — combina Characterization Test das intenções de negócio que devem sobreviver à mudança arquitetural com asserções provando a purga da infraestrutura legada e a pureza do contrato do consumidor. Toda tarefa de teste em tasks.md DEVE declarar sua modalidade e seu Cenário de Falsificação (qual comportamento de negócio real fará o teste falhar). É ESTRITAMENTE PROIBIDO (BLOCKING) usar asserções puramente sintáticas/estáticas isoladas (como assert path.is_file() ou assert \"string\" in path.read_text()) para atestar conclusão de funcionalidade ou bugfix.\n",
+            "rationale": "Testes que verificam apenas existência de arquivos ou strings criam falsos positivos (\"teatro de conformidade\") enquanto o sistema falha em execução real. A Matriz de 4 Modalidades e o Cenário de Falsificação garantem que todo teste valide comportamento executável de caixa-preta e que migrações arquiteturais jamais amputem comportamentos estáveis existentes.\n",
+            "validator": "/vitalia-judge"
+          },
+          "P06": {
+            "name": "Secrets Never in Git",
+            "domain": "SECRETS",
+            "severity": "BLOCKING",
+            "rule": "Credenciais, chaves e senhas existem apenas em .env locais ou vaults. Nenhum segredo entra em commits, logs ou outputs de console. Migrações de banco são não-destrutivas e idempotentes.\n",
+            "rationale": "Segredo em git é permanente — o histórico não apaga. Em sistemas de saúde com PHI/PII, constitui breach reportável (LGPD Art. 48).\n",
+            "validator": "manual"
+          },
+          "P07": {
+            "name": "Privacy by Design & Data Vault (LGPD/HIPAA)",
+            "domain": "PRIVACY_DATA_VAULT",
+            "severity": "BLOCKING",
+            "rule": "Dado de saúde pertence ao Participante. PHI/PII criptografado em repouso (nível de campo). Logs sanitizados — sem dado de saúde em texto puro. Queries sempre com user_id + organization_id. Suporte a exclusão auditável (LGPD Art. 18).\n",
+            "rationale": "LGPD Art. 11 exige base legal para dados de saúde. Multi-tenancy sem filtro é vulnerabilidade CRÍTICA. Tolerância zero.\n",
+            "validator": "hooks/llm_judge.py --mode after_task"
+          },
+          "P08": {
+            "name": "Smart Routing & Minimum Privilege per Agent",
+            "domain": "AGENT_SECURITY",
+            "severity": "INFO",
+            "rule": "Identificar silenciosamente o domínio e ativar especialista conforme AGENTS.md. Agentes não acessam ferramentas fora de seu domínio declarado (default-deny — OWASP LLM06:2025). Override: @agente ou menção explícita do usuário.\n",
+            "rationale": "Excessive Agency (OWASP LLM06:2025) é risco crítico em sistemas multi-agente. Mínimo privilégio reduz superfície de ataque.\n",
+            "validator": "hooks/guardian_context.py"
+          },
+          "P09": {
+            "name": "Medical Safety Gate (HITL Triplo)",
+            "domain": "CLINICAL_SAFETY",
+            "severity": "BLOCKING",
+            "rule": "IA gera → DRAFT. Especialista científico → REVIEW. Profissional de saúde humano → ACTIVE (único estado publicável ao usuário final). Disclaimer educacional obrigatório. Gate ativado por: diagnóstico, dosagens, biomarcadores, protocolos, nutrição, zonas de treino.\n",
+            "rationale": "IA alucina. Em saúde, isso tem consequências à vida humana. HITL médico é requisito ético, regulatório (EU AI Act Art. 14) e de responsabilidade civil. Não é opcional.\n",
+            "validator": "/vitalia-task-verifier"
+          },
+          "P10": {
+            "name": "Didactics-First & Automation as Guardian",
+            "domain": "DIDACTIC_ENGINEERING",
+            "severity": "WARNING",
+            "rule": "100% dos scripts Python implementam --help didático com exemplos. Código contém comentários inline acessíveis a desenvolvedores júnior. Processos repetitivos têm scripts — processo manual é falha esperando.\n",
+            "rationale": "O Kit é usado por pesquisadores sem background de engenharia. Código sem --help é inacessível e gera suporte manual evitável.\n",
+            "validator": "hooks/llm_judge.py --mode after_task"
+          },
+          "P11": {
+            "name": "Hardware-Agnostic LLM Routing, Data Contracts & Machine Identity",
+            "domain": "HARDWARE_AGNOSTICISM",
+            "severity": "BLOCKING",
+            "rule": "Nenhum nome de modelo LLM hardcoded — vem de .env (NO1_MODEL, NO2_MODEL, ROUTER_LLM_PROFILE etc.). Todo contrato de schema JSON no sistema deve seguir estritamente o subset OpenAPI 3.0 limpo, sendo terminantemente proibidos meta-campos incompatíveis com compiladores REST de LLM como '$schema', 'title' e 'additionalProperties: false'. Instâncias de runtime (.vitalia/*.json) são dados planos, nunca definições de schemas. Nenhum machine_id hardcoded — deriva de VITALIA_MACHINE_NAME env var ou socket.gethostname() via SHA256[:8]. Builds reprodutíveis: local = produção.\n",
+            "rationale": "Sistema opera em hardware heterogêneo (GTX 1060 6GB, RTX 3090, CPU-only). Hardcodar quebra silenciosamente em hardware diferente.\n",
+            "validator": "manual"
+          },
+          "P12": {
+            "name": "Agent Security — Prompt Injection & Output Validation",
+            "domain": "AGENT_SECURITY",
+            "severity": "BLOCKING",
+            "rule": "Todo input é potencialmente malicioso (OWASP LLM01:2025). Output de LLMs nunca executado sem validação de schema. System prompts são segredos (LLM07:2025). Agentes não executam ações destrutivas sem confirmação HITL. Stack trace nunca vaza para o cliente.\n",
+            "rationale": "Prompt Injection é risco #1 em sistemas agênticos (OWASP 2025). Indirect Injection via RAG é especialmente perigosa em healthcare.\n",
+            "validator": "hooks/llm_judge.py --mode after_task"
+          },
+          "P13": {
+            "name": "API Safety Gate",
+            "domain": "AGENT_SECURITY",
+            "severity": "BLOCKING",
+            "rule": "Nenhum endpoint de dado de saúde é público. Checklist obrigatório: autenticação JWT, autorização por recurso, rate limiting, validação de input via schema, filtro por organization_id, sem stack trace para o cliente (log interno + resposta genérica).\n",
+            "rationale": "Endpoints sem autenticação em sistemas de saúde violam LGPD e HIPAA. Autorização vs autenticação é o erro mais comum em APIs REST.\n",
+            "validator": "/vitalia-task-verifier"
+          },
+          "P14": {
+            "name": "Evidence Traceability & Clinical Data Lineage",
+            "domain": "CLINICAL_SAFETY",
+            "severity": "BLOCKING",
+            "rule": "Todo constraint médico (MC-NNN) carrega: identificador rastreável, fonte científica com nível (A=meta-análise, B=RCT, C=expert) e comentário no código. EU AI Act Art. 12: logs automáticos de inputs, outputs e ações humanas com timestamps.\n",
+            "rationale": "Explicabilidade jurídica exige raciocínio auditável. EU AI Act (vigência 02-08-2026) impõe data lineage obrigatório para high-risk AI.\n",
+            "validator": "/vitalia-task-verifier"
+          },
+          "P15": {
+            "name": "Observability & Structured Logging",
+            "domain": "OBSERVABILITY",
+            "severity": "WARNING",
+            "rule": "Structured logging obrigatório em serviços críticos. N+1 é falha de design — usar eager loading. Processamento pesado vai para filas (Redis Streams), não para o ciclo de request. Telemetria de agentes centralizada para rastreabilidade de inter-agent communication.\n",
+            "rationale": "Em sistemas multi-agente, falhas cascata são impossíveis de diagnosticar sem telemetria centralizada.\n",
+            "validator": "manual"
+          },
+          "P16": {
+            "name": "Artifact Integrity & Mermaid Defensive Programming",
+            "domain": "INFRASTRUCTURE",
+            "severity": "WARNING",
+            "rule": "Toda edição deixa o arquivo em estado válido sem regressões. Modificações parciais que tornam arquivos inconsistentes são vetadas. Mermaid: todos os labels de nodes e edges entre aspas duplas para prevenir quebra por caracteres especiais: (), [], |, {}. Históricos de sessão: inserção sempre no topo (cronologia reversa).\n",
+            "rationale": "Artefatos inconsistentes causam falhas silenciosas de integração. Mermaid quebra silenciosamente com parênteses em timestamps.\n",
+            "validator": "maintenance/header_stamp.py"
+          },
+          "P17": {
+            "name": "EU AI Act Compliance — High-Risk Healthcare AI",
+            "domain": "REGULATORY_COMPLIANCE",
+            "severity": "BLOCKING",
+            "rule": "Sistemas de IA em saúde são high-risk sob EU AI Act (vigente 02-08-2026). Obrigações: documentação técnica antes do deploy, sistema de gestão de risco documentado, logs automáticos (Art. 12), human oversight efetivo (Art. 14), quality management system. Penalty: até €15M ou 3% do faturamento global.\n",
+            "rationale": "Conformidade não é diferencial — é baseline legal. Produtos sem conformidade expõem pacientes a risco e a empresa a sanções graves.\n",
+            "validator": "manual"
+          }
+        }
+      }
+    },
+    "phase_guardrails": {
+      "phase": "session-end",
+      "role": "Guardião de Encerramento 3-Tier & Regra da Cerca Elétrica",
+      "mandatory_checks": [
+        "Regra da Cerca Elétrica: NUNCA editar ou commitar diretamente em .vitalia/memory/session/ via ferramentas da IDE ou git commit manual.",
+        "Executar vitalia_context_engine.py --action end --payload-file <json> seguido de --action consolidate."
+      ]
+    },
+    "phase_profiles": {},
+    "session_context": {
+      "p0": "- **🎯 Próximo Passo Prioritário (P0):** `Executar /vitalia-session-consolidate para sincronizar os shards e compilar o Dashboard, ou iniciar nova feature SDD`",
+      "active_feature": "specs/005-runtime-discrepancy-and-dual-venv"
+    },
+    "env_summary": {
+      "status": "HEALTHY",
+      "project_root": "/home/andre/projetos/assistidos/vitalia-spec-kit",
+      "kit_dir": "/home/andre/.vitalia-spec-kit",
+      "kit_runtime": {
+        "kit_dir": "/home/andre/.vitalia-spec-kit",
+        "python_bin": "/home/andre/.vitalia-spec-kit/.venv/bin/python3",
+        "status": "HEALTHY"
+      },
+      "project_runtime": {
+        "project_root": "/home/andre/projetos/assistidos/vitalia-spec-kit",
+        "has_venv": false,
+        "python_bin": null,
+        "source_detected": "not_found"
+      },
+      "has_env": true,
+      "issues": []
+    },
+    "context_decisions": [
+      {
+        "id": "d00e5b8a",
+        "type": "decision",
+        "timestamp": "10-11-2026 20:17:46(GMT-04:00)",
+        "machine_id": "7f367bd3",
+        "category": "ARQUITETURA",
+        "decision": "ADR-0003 — Pre-flight check modular, isolamento estrito do .venv e observabilidade passo a passo",
+        "rationale": "Criação da biblioteca source/bin/lib/preflight.sh compartilhada entre kit-bootstrap.sh e install-project, purga definitiva de --system-site-packages, logs isolados por UID em /tmp e banner contextual de shell.",
+        "alternatives": [
+          "Manter pre-flight embutido ad-hoc em cada script",
+          "Permitir fallback silencioso para pacotes do sistema"
+        ]
+      },
+      {
+        "id": "b2989966",
+        "type": "decision",
+        "timestamp": "10-11-2026 15:46:20(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Desacoplamento da limpeza de temporários do hook runner de contexto para uma ferramenta CLI independente (vitalia_tmp_cleanup.py).",
+        "rationale": "Elimina matriz de limpeza de temporários dentro do payload de contexto, acabando com o ruído e sequestro de atenção cognitiva dos modelos.",
+        "alternatives": [
+          "Manter a limpeza automática síncrona dentro de cada turno do hook runner",
+          "Deixar arquivos temporários acumularem indefinidamente sem utilitário de expurgo"
+        ]
+      },
+      {
+        "id": "7a77ad93",
+        "type": "decision",
+        "timestamp": "10-11-2026 15:46:20(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Centralização de backups e manifestos gerados pelo instalador na Camada 4 (.vitalia/memory/data_storage/).",
+        "rationale": "Garante pureza de 100% na árvore de skills da IDE (.agents/skills/) e na raiz de .vitalia/, impedindo arquivos soltos ou ocultos residuais.",
+        "alternatives": [
+          "Gravar backups e manifesto diretamente na raiz de .vitalia/",
+          "Gravar pastas .backup dentro de .agents/skills/"
+        ]
+      },
+      {
+        "id": "dc086746",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Instituir Motor Dinâmico de Despacho de Sub-Agentes no vitalia-architect 100% guiado por agents_catalog.yaml (padrão vitalia-route).",
+        "rationale": "Permite que novos especialistas adicionados ao catálogo sejam imediatamente utilizáveis pelo Arquiteto sem necessidade de alterar o prompt do architect.toml.",
+        "alternatives": [
+          "Acoplar lista estática de especialistas no prompt do architect.toml",
+          "Executar todas as tarefas complexas na sessão central sem sub-agentes"
+        ]
+      },
+      {
+        "id": "b72cfc32",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Desacoplar o cálculo de ambiguidades de grounding_domains.yaml criando o perfil ambiguity_scoring.yaml e o schema ambiguity_scoring.schema.json, com cálculo determinístico via script sdd_ambiguity_scorer.py.",
+        "rationale": "Preserva o Princípio da Responsabilidade Única (SRP) e elimina alucinações aritméticas em cálculos mentais da LLM.",
+        "alternatives": [
+          "Sobrecarregar grounding_domains.yaml com escalas e pesos de FMEA",
+          "Confiar o cálculo de Priority Score e densidade ao raciocínio da LLM no prompt"
+        ]
+      },
+      {
+        "id": "53189038",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Adotar a Vitalia Runtime Sensor Suite (VRSS) estruturada em 5 classes de sensores e pipeline de ingestão em 4 estágios com Structured Error Envelopes.",
+        "rationale": "Fornece observabilidade em malha fechada para os agentes sem poluir a janela de contexto com dumps de terminal e tracebacks brutos.",
+        "alternatives": [
+          "Injetar saídas brutas de stdout/stderr diretamente nas mensagens de erro das ferramentas",
+          "Operar sem sensores, confiando apenas no julgamento estático dos prompts"
+        ]
+      },
+      {
+        "id": "7449df5b",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Elevar a obrigatoriedade da flag --help didática com exemplos de uso a Princípio Constitucional Mandatório para 100% dos scripts executáveis e ferramentas CLI do Kit.",
+        "rationale": "Garante acessibilidade e usabilidade para equipes multidisciplinares e pesquisadores sem background de engenharia profunda.",
+        "alternatives": [
+          "Manter --help como recomendação de boas práticas sem caráter constitucional",
+          "Permitir scripts sem interface CLI padronizada"
+        ]
+      },
+      {
+        "id": "98aae91b",
+        "timestamp": "08-11-2026 21:48:52(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Desacoplamento total de Redis local no Kit v0.0.1, utilizando envelopes de contexto direto em disco (.vitalia/memory/data_storage/context/<machine_id>/).",
+        "rationale": "Elimina dependências de serviços e containers externos para desenvolvedores e pesquisadores sem infraestrutura pesada.",
+        "alternatives": [
+          "Manter Redis local obrigatório via Docker ou systemd"
+        ]
+      },
+      {
+        "id": "23ce3811",
+        "timestamp": "08-11-2026 21:48:52(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Política incondicional de Zero Poda (total_budget: 0, no_prune: true) para modelos de fronteira em todos os 16 workflows SDD e 14 perfis gp_*.yaml.",
+        "rationale": "Modelos de fronteira suportam janelas amplas de contexto, garantindo que nenhuma regra constitucional ou diretiva seja perdida.",
+        "alternatives": [
+          "Manter algoritmo de poda por orçamento de tokens"
+        ]
+      },
+      {
+        "id": "5c455455",
+        "timestamp": "08-11-2026 21:48:52(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Padronização de esquemas em OpenAPI 3.0 puro sem propriedades de meta-schema ($schema, title de raiz, additionalProperties: false).",
+        "rationale": "Compatibilidade universal com ferramentas de IA, SDKs e IDEs que rejeitam dialetos incompatíveis de JSON Schema.",
+        "alternatives": [
+          "Usar JSON Schema Draft 7/2020-12 com $schema"
+        ]
+      },
+      {
+        "id": "a7a8ad47",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Adotar Topologia de 4 Camadas Isoladas: (1) Código-fonte exclusivo em source/ no repositório raiz; (2) Kit instalado na pasta escolhida pelo usuário (padrão ~/.vitalia-spec-kit); (3) Repositório Git dedicado de sessão em .vitalia/memory/session/; (4) Repositório Git dedicado de dados em .vitalia/memory/data_storage/.",
+        "rationale": "Garante isolamento entre o código versionado do kit, o runtime local da máquina hospedeira e os repositórios de memória/contexto em nuvem.",
+        "alternatives": [
+          "Versionar arquivos de runtime e memória no mesmo repositório Git raiz",
+          "Hardcodar caminhos fixos sem respeitar VITALIA_KIT_DIR"
+        ]
+      },
+      {
+        "id": "c020e5ca",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Converter perfis do Guardian (gp_*.yaml) em Lentes de Fase Sem Poda (no_prune: true, total_budget: 0) combinadas com phase_guardrails e phase_profiles.",
+        "rationale": "Preserva 100% da constituição em todas as fases SDD em modelos de fronteira enquanto injeta restrições especializadas por comando.",
+        "alternatives": [
+          "Manter poda de princípios constitucionais por limite de tokens (total_budget restrito)",
+          "Remover os arquivos gp_*.yaml completamente e perder os guardrails específicos de fase"
+        ]
+      },
+      {
+        "id": "f3067b6c",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Instituir a Matriz Bidimensional de Testes P05 com 4 Modalidades ([TEST:NEW], [TEST:BUGFIX], [TEST:REFACTOR], [TEST:MIGRATION]), Cenário de Falsificação obrigatório e bloqueio de testes sintáticos rasos.",
+        "rationale": "Impede que features de infraestrutura/CLI e migrações passem na validação apenas verificando existência de arquivos sem testar execução real e regressão.",
+        "alternatives": [
+          "Exigir apenas TDD clássico indistintamente para qualquer tipo de tarefa",
+          "Permitir testes de inspeção textual/regex para scripts shell e TOML"
+        ]
+      },
+      {
+        "id": "a6e3da62",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "ARQUITETURA",
+        "decision": "Criar o Sub-Agente /vitalia-research (research.toml + gp_research.yaml) e calibrar grounding_domains.yaml em 10 domínios alinhados à stack de produção do ecossistema (incluindo ai-control).",
+        "rationale": "Separa a responsabilidade de pesquisa profunda, Grounding Temporal (P03), validação HTTP 200 e Engenharia Reversa Funcional em 3 Camadas antes da especificação e planejamento.",
+        "alternatives": [
+          "Realizar buscas web ad-hoc dentro de spec-specify ou spec-plan sem validação formal de links e versões"
+        ]
+      },
+      {
+        "id": "9d78edb0",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "category": "PROJETO",
+        "decision": "Consolidar todas as especificações e contratos das Specs 002, 003 e do Ciclo Corretivo na âncora unificada .vitalia/memory/data_storage/research/anchor-research-brainstorming-002-003.md para reexecução limpa (dogfooding) a partir do commit íntegro da Spec 001 (23bb91b).",
+        "rationale": "Evita alucinações por artefatos intermediários divergentes e permite validar o kit recém-blindado reconstruindo as Specs 002 e 003 do zero com governança completa.",
+        "alternatives": [
+          "Aplicar remendos incrementais sobre os diretórios specs/002 e specs/003 gerados antes da blindagem dos workflows"
+        ]
+      },
+      {
+        "id": "a439a5bb",
+        "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+        "machine_id": "17a6f667",
+        "category": "ARQUITETURA",
+        "decision": "Executar o SDD-Judge como Sub-Agente nativo na IDE Antigravity com HITL soberano",
+        "rationale": "Permite auditoria em janela de 1M-2M tokens com Sanduíche Constitucional sem perda de regras e sem travar a IDE.",
+        "alternatives": [
+          "Executar script CLI sdd_judge.py via terminal externo com fatiamento de 400 tokens"
+        ]
+      },
+      {
+        "id": "ad0a2d82",
+        "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+        "machine_id": "17a6f667",
+        "category": "ARQUITETURA",
+        "decision": "Adotar Sanduíche Constitucional (Primacy Bias P00-P20 e Recency Checklist) e Inverted CoT",
+        "rationale": "Neutraliza attention loss em prompts longos e mitiga confirmação prematura via veredito emitido apenas ao final da crítica.",
+        "alternatives": [
+          "Prompt linear padrão com veredito no início"
+        ]
+      },
+      {
+        "id": "246ef7bd",
+        "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+        "machine_id": "17a6f667",
+        "category": "ARQUITETURA",
+        "decision": "Utilizar estritamente contratos JSON OpenAPI 3.0 puros (sem $schema, sem title e sem additionalProperties: false)",
+        "rationale": "Evita erros de compilação HTTP 400 no compilador REST do Google Gemini.",
+        "alternatives": [
+          "JSON Schema Draft-07 completo com meta-schemas"
+        ]
+      }
+    ],
+    "context_learnings": [
+      {
+        "id": "d0d40052",
+        "type": "learning",
+        "timestamp": "10-11-2026 20:17:46(GMT-04:00)",
+        "machine_id": "7f367bd3",
+        "source_origin": "andrenote",
+        "category": "KIT",
+        "learning": "Proibição estrita de auto-invocação sem caminho absoluto em scripts de mock de shell",
+        "rationale": "Mocks executáveis injetados no PATH temporário nunca devem chamar o mesmo nome de binário sem caminho absoluto, sob risco de recursão infinita (fork bomb) que satura processos e memória no WSL2. Preferir sempre mocks estáticos sem subprocessos.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "99a1b442",
+        "type": "learning",
+        "timestamp": "10-11-2026 20:17:46(GMT-04:00)",
+        "machine_id": "7f367bd3",
+        "source_origin": "andrenote",
+        "category": "PROJETO",
+        "learning": "Preservação de exit codes em redirecionamentos Bash",
+        "rationale": "O padrão 'command >> file 2>&1 || true; STATUS=$?' mascara o código de retorno tornando-o 0. A abordagem canônica é usar 'set +e ... set -e' capturando $? diretamente sem '|| true'.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "6a88983e",
+        "type": "learning",
+        "timestamp": "10-11-2026 20:17:46(GMT-04:00)",
+        "machine_id": "7f367bd3",
+        "source_origin": "andrenote",
+        "category": "KIT",
+        "learning": "Validação de permissão de escrita em caminhos inexistentes",
+        "rationale": "O teste defensivo prévio deve inspecionar recursivamente o primeiro ancestral existente no disco com probe temporário via mktemp, impedindo a criação precoce de diretórios órfãos.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "fff7c030",
+        "type": "learning",
+        "timestamp": "10-11-2026 15:46:20(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "Em scripts bash com 'set -eo pipefail', pipelines contendo grep (ex: grep ... | awk ...) falham imediatamente quando grep não encontra linhas. Devem ser protegidos com '(grep ... || true) | awk ...'.",
+        "rationale": "Garante robustez em pipelines shell defensivos sob modo estrito sem interromper a execução prematuramente.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "1716c563",
+        "type": "learning",
+        "timestamp": "10-11-2026 15:46:20(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "Frontmatter YAML em SKILL.md de agentes de IDE deve iniciar obrigatoriamente na linha 1 exata com '---'.",
+        "rationale": "Cabeçalhos ou comentários colocados antes do delimitador invalidam o parser de YAML e quebram a descoberta de skills.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "12b92f84",
+        "type": "learning",
+        "timestamp": "10-11-2026 15:46:20(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "Arquivos em .vitalia/memory/session/ (como SESSION_HISTORY.md) são artefatos compilados da Camada 3 e jamais devem ser editados manualmente.",
+        "rationale": "A mutação da memória de sessão pertence exclusivamente ao motor de contexto (vitalia_context_engine.py), respeitando a Regra da Cerca Elétrica.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "9155f0cb",
+        "type": "learning",
+        "timestamp": "10-11-2026 15:46:20(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "PROJETO",
+        "learning": "A suíte de sensores VRSS atua como guarda ativa durante todo o ciclo de desenvolvimento, capturando caminhos hardcoded, anomalias e segredos em tempo real.",
+        "rationale": "Executar a suíte de 5 sensores previne regressões contratuais e violações de Progressive Disclosure.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "cf1fff15",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "[KIT] Sub-Agent Dispatch Engine no Architect via Catálogo: O Arquiteto não deve acoplar tipos de especialistas estaticamente em seu prompt; deve resolver dinamicamente via agents_catalog.yaml em runtime (padrão vitalia-route), permitindo adicionar novos especialistas sem alterar o contrato do workflow.",
+        "rationale": "Garante extensibilidade zero-touch e preserva o Princípio do Contexto Delimitado (Bounded Context) sem inflar a sessão principal com ferramentas desnecessárias.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "68690aa7",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "[KIT] Separação de Responsabilidade Única (SRP) em Perfis de Governança: Matrizes de cálculo matemático, escalas e limiares de ambiguidade não devem sobrecarregar grounding_domains.yaml; exigem perfil (ambiguity_scoring.yaml) e schema próprios.",
+        "rationale": "Mantém grounding_domains.yaml focado estritamente em grounding temporal e autoridades externas, enquanto os parâmetros de pontuação matemática ganham governança e schema dedicados.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "1bd0fce0",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "[KIT] Princípio Constitucional de Engenharia Didática: 100% dos scripts utilitários do kit devem implementar --help didático com exemplos práticos de uso; código sem help ou com help críptico é considerado violação constitucional bloqueante.",
+        "rationale": "Torna o kit acessível a pesquisadores e desenvolvedores de diferentes níveis e viabiliza validação automatizada de conformidade antes de qualquer release.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "ca345c44",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "[KIT] Suíte de Sensores de Runtime e Pipeline Anti-Ruído: O terminal bruto nunca deve vazar para a janela de contexto; sensores devem fatiar e destilar falhas em Structured Error Envelopes (JSON minimalista), usando Context Lifting para persistir dumps no disco e ativando o Inverted CoT para auto-correção.",
+        "rationale": "Previne diluição de atenção e o fenômeno lost-in-the-middle em prompts longos, forçando o modelo a raciocinar sobre evidências estruturadas.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "28251b73",
+        "timestamp": "09-11-2026 23:28:42(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "PROJETO",
+        "learning": "[PROJETO] Isolamento Rigoroso em Fases de Concepção: Manter source/ e ~/.vitalia/ 100% intocados durante a revisão contratual e concentrar relatórios e matrizes decisórias na pasta TEMP/ garante rastreabilidade e impede corrupção prematura do repositório antes da execução formal da spec.",
+        "rationale": "Assegura que qualquer implementação de código no repositório ocorra estritamente sob uma spec formal aprovada.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "402ba1bd",
+        "timestamp": "08-11-2026 21:48:52(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "Testes de bootstrap em ambientes sem venv devem capturar ausência de python3-venv via subshell e ejetar com código de saída 1 e instrução clara de remediação (sudo apt install python3-venv).",
+        "rationale": "Evita rastros de erro crípticos do interpretador e orienta o usuário no primeiro contato.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "984fa05c",
+        "timestamp": "08-11-2026 21:48:52(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "O gerador de skills (skill_generator.sh) deve isolar manifestos e backups em .vitalia/backups/skills/ e .vitalia/.vitalia-manifest, mantendo o diretório .agents/skills/ estritamente puro.",
+        "rationale": "IDEs agênticas analisam .agents/skills/ e quebram ou falham na descoberta caso existam pastas como .trash/ ou arquivos .vitalia-manifest.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "99fbd977",
+        "timestamp": "08-11-2026 21:48:52(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "Em arquiteturas 3-Tier de contexto distribuído, a ordenação de shards deve priorizar o campo last_sync em ordem decrescente (com fallback para created_at).",
+        "rationale": "Assegura que a versão mais recentemente sincronizada seja utilizada como âncora principal no dashboard.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "fccad59c",
+        "timestamp": "08-11-2026 21:48:52(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "Envelopes de context lifting e schemas OpenAPI 3.0 devem sincronizar propriedades aninhadas mandatárias (como prompt replicado no topo e dentro de guardian).",
+        "rationale": "Atende compiladores rígidos de schema JSON e consumidores REST simultaneamente.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "3a5c1a3f",
+        "timestamp": "08-11-2026 21:48:52(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "PROJETO",
+        "learning": "Isolamento de ambiente de desenvolvimento preservando ~/.vitalia congelado e simulando testes de máquina limpa via tmp_path e diretórios parametrizados.",
+        "rationale": "Garante reprodutibilidade e blindagem contra poluição de ambientes globais.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "e790be19",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "[KIT] Regra da Cerca Elétrica (3-Tier Isolation): Agentes nunca devem editar ou commitar diretamente no repositório de sessão (.vitalia/memory/session/); toda mutação e push de shards/dashboard deve ocorrer exclusivamente via vitalia_context_engine.py acionado nos fluxos de session-end e session-consolidate.",
+        "rationale": "Evita corrupção de shards entre múltiplas máquinas (ex: wsl2 vs andrenote) e garante que a consolidação respeite o schema determinístico de aprendizados e decisões.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "b93e2622",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "[KIT] Separação estrita entre código-fonte (source/ no repositório raiz) e kit instalado na máquina hospedeira (~/.vitalia-spec-kit por padrão via VITALIA_KIT_DIR).",
+        "rationale": "Evita divergência entre o artefato versionado no Git e o runtime global invocado pelas skills da IDE.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "05bd5d2e",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "[KIT] Lentes de Fase Sem Poda (no_prune: true em gp_*.yaml): Em modelos de fronteira (1M+ tokens), podar a constituição por fase enfraquece a governança; o perfil gp_*.yaml deve injetar 100% da constituição e adicionar phase_guardrails específicos da etapa.",
+        "rationale": "Elimina perda de princípios transversais (como P03, P05 e P11) durante fases intermediárias do ciclo SDD.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "a79cac32",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "KIT",
+        "learning": "[KIT] Proibição de Asserções Sintáticas Rasas (P05): Testes baseados apenas em assert path.is_file() ou regex em arquivos estáticos mascaram bugs de runtime (ex: colisão de stderr em subshell e deadlock de prompt interativo em WSL2/zsh).",
+        "rationale": "Força a execução comportamental real via subprocess.run em tmp_path e exige Cenário de Falsificação explícito em tasks.md.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "1743ade2",
+        "timestamp": "07-11-2026 21:38:04(GMT-04:00)",
+        "machine_id": "eb10269b",
+        "source_origin": "srv_master",
+        "category": "PROJETO",
+        "learning": "[PROJETO] Calibração de Grounding (grounding_domains.yaml) com a stack real dos projetos assistidos (ex: ai-control com Django 6.1 ASGI/Daphne, Next.js 16.4, React 19.2, pgvector HNSW, django-crypto-fields e Gemini 3.x + Ollama).",
+        "rationale": "Garante que o detector de domínios (domain_detector.py) acione P03 e o sub-agente vitalia-research com triggers condizentes com a maturidade tecnológica dos sistemas reais.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "7b82f01a",
+        "timestamp": "06-11-2026 13:16:00(GMT-04:00)",
+        "machine_id": "17a6f667",
+        "source_origin": "ai-control",
+        "category": "GOVERNANCA",
+        "learning": "[GOVERNANCA] Specs Corretivas vs Imutabilidade de Entregas: Specs concluídas e comitadas são artefatos imutáveis. Erros e lacunas pós-entrega não devem ser maquiados como 'hardening' nem anexados à spec antiga; exigem abertura de spec corretiva sequencial formal (fix-*) com Root Cause Analysis transparente.",
+        "rationale": "Garante rastreabilidade histórica íntegra e maturidade de engenharia sem falsear o escopo do que foi entregue.",
+        "trigger_event": "brainstorming"
+      },
+      {
+        "id": "9c14d3e2",
+        "timestamp": "06-11-2026 13:16:00(GMT-04:00)",
+        "machine_id": "17a6f667",
+        "source_origin": "ai-control",
+        "category": "KIT",
+        "learning": "[KIT] Validação E2E Obrigatória em Scripts de Bootstrap: Validar apenas a criação do virtualenv ou diretórios do kit global gera falso positivo nos testes. A suíte de testes do bootstrap deve obrigatoriamente rodar um teste de fumaça de ponta a ponta acionando install-project em um projeto hospedeiro limpo, assegurando que templates, shims e skills cheguem ao destino.",
+        "rationale": "Previne que omissões de espelhamento (como integrations/ e AGENTS.md) passem despercebidas nos testes unitários.",
+        "trigger_event": "brainstorming"
+      },
+      {
+        "id": "311d5098",
+        "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+        "machine_id": "17a6f667",
+        "source_origin": "ai-control",
+        "category": "KIT",
+        "learning": "[KIT] Contratos OpenAPI 3.0 para Google Gemini REST: Schemas JSON validados por compiladores de modelos de fronteira rejeitam meta-campos Draft-07 como $schema, title no nó raiz e additionalProperties: false (gerando HTTP 400). Padrão estrito OpenAPI 3.0 limpo.",
+        "rationale": "Previne falhas de compilação de schema via chamadas de API em tempo de execução.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "d8d29577",
+        "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+        "machine_id": "17a6f667",
+        "source_origin": "ai-control",
+        "category": "KIT",
+        "learning": "[KIT] Sub-Agente Nativo vs CLI Externo: A orquestração do SDD-Judge nativamente na IDE Antigravity elimina a necessidade de fatiamento de 400 tokens de VRAM e previne diluição de regras constitucionais.",
+        "rationale": "Janelas de contexto amplas com Sanduíche Constitucional mantêm atenção aos princípios e reduzem alucinações na auditoria.",
+        "trigger_event": "session-end"
+      },
+      {
+        "id": "353fca0f",
+        "timestamp": "03-11-2026 05:47:37(GMT-04:00)",
+        "machine_id": "17a6f667",
+        "source_origin": "ai-control",
+        "category": "PROJETO",
+        "learning": "[PROJETO] Governança Scaffold Puro e Convenção Sequencial: Estrutura specs/<NNN>-<slug>/ com 3 dígitos zero-padded e scaffold direto de source/ para ~/.vitalia/ garante reprodutibilidade e modularidade.",
+        "rationale": "Evita sobreposições e mantém a integridade de repositórios locais do kit.",
+        "trigger_event": "session-end"
+      }
+    ],
+    "estimated_tokens": 5853,
+    "token_budget": 0
+  },
+  "prompt": "## User Input\n\n```text\n{{args}}\n```\n\n<!-- session-end.md | Atualizado pela Spec 3.1 -->\n\n# /session-end — Encerramento de Sessão (Spec 3.1)\n\n{{args}}\n\n---\n\n## Propósito\n\nReflexão, registro e commit local. **NÃO faz push** do repositório de contexto.\n\n---\n\n## Pipeline de Encerramento (As 4 Fases)\n\n### 🪞 Fase 1 — Extração Cognitiva e Reflexão (HITL)\n\n**Diretiva de Extração Rigorosa:**\nVocê atua como o consolidador da memória. Analise ativamente todo o seu histórico de chat (transcript) nesta sessão. Você DEVE extrair as decisões arquiteturais e os aprendizados, formatando-os ESTRITAMENTE conforme os moldes de `learning_schema.json` e `decision_schema.json` carregados no seu contexto.\n\n- **Filtro da Constituição:** Antes de registrar uma decisão, valide-a contra as regras presentes na sua `constitution` (injetada no `guardian_json`). Rejeite silenciosamente decisões que violem a constituição.\n- **Categorização:** Para aprendizados, use `[KIT]` para melhorias no ecossistema e `[PROJETO]` para a base de código local.\n\nApresente um resumo para o usuário aprovar:\n```markdown\n📋 Resumo da sessão\n\n**Atividades:**\n- [item]\n- [item]\n\n**Próximo Passo (P0):**\n- [item]\n\n**Aprendizados Identificados:**\n- [KIT] [descrição]\n- [PROJETO] [descrição]\n\n✅ Aprova este resumo? Ajuste o que desejar.\n```\n\n#### 1.1 Detecção de Novos Domínios de Grounding (após aprovação do resumo)\n\nApós o usuário aprovar o resumo, verifique se algum aprendizado `[KIT]` revela:\n- Um domínio de risco externo NÃO coberto na leitura do arquivo global `{{VITALIA_KIT_DIR}}/profiles/grounding_domains.yaml`\n- Uma fonte autoritativa melhor para um domínio já existente\n\nSe sim, para cada domínio/fonte nova detectada:\n1. Anunciar ao usuário: `\"Novo domínio de grounding identificado: [X] — adicionar ao repositório local?\"`\n2. Se aprovado, fazer **append** em `.vitalia/memory/session/data/grounding-domains.jsonl`, preenchendo as variáveis rigorosamente de acordo com o `grounding_domain_schema.json` carregado no seu contexto:\n```bash\necho '{\"id\":\"<sha256[:16] do conteúdo>\",\"type\":\"new_domain\",\"scope\":null,\"domain\":\"<nome>\",\"description\":\"<desc>\",\"authoritative_sources\":[\"<url>\"],\"machine_id\":\"<id>\",\"timestamp\":\"<DD-MM-YYYY HH:MM(GMT-04:00)>\",\"reason\":\"<motivo>\"}' >> .vitalia/memory/session/data/grounding-domains.jsonl\n```\n3. **NÃO decidir** global vs local aqui — decisão de scope é do `/vitalia-session-consolidate`\n4. **NÃO editar** views nem o yaml global.\n\n### 🧠 Fase 2 — Atualização Estruturada do Shard e Dados (via Motor)\n\nApós a aprovação, não escreva nos arquivos YAML ou JSONL diretamente. Extraia os dados e delegue a persistência ao motor de contexto.\n\n1. Crie o arquivo `.vitalia/temp_learnings.json` contendo a array JSON dos aprendizados. Utilize ESTRITAMENTE as chaves e a estrutura definida no arquivo `learning_schema.json` lido no seu contexto. (Escreva `[]` se vazio. Sem blocos de código markdown).\n2. Crie o arquivo `.vitalia/temp_decisions.json` baseado ESTRITAMENTE no `decision_schema.json`. (Escreva `[]` se vazio. Sem blocos markdown).\n3. Crie arquivos `.txt` simples para blindar quebras de shell:\n   - `.vitalia/temp_task.txt` (Nome da feature)\n   - `.vitalia/temp_p0.txt` (P0 aprovado)\n   - `.vitalia/temp_summary.txt` (Resumo)\n\n4. Execute o motor lendo os arquivos gerados:\n```bash\n{{KIT_PYTHON}} {{VITALIA_KIT_DIR}}/src/vitalia_context_engine.py --action end --task \"$(cat .vitalia/temp_task.txt 2>/dev/null || echo 'Sem tarefa')\" --p0 \"$(cat .vitalia/temp_p0.txt 2>/dev/null || echo 'Sem P0')\" --summary \"$(cat .vitalia/temp_summary.txt 2>/dev/null || echo '')\" --learnings-json \"$(cat .vitalia/temp_learnings.json 2>/dev/null || echo '[]')\" --decisions-json \"$(cat .vitalia/temp_decisions.json 2>/dev/null || echo '[]')\"\n```\n\n5. Após o comando rodar com sucesso, exclua APENAS os 5 arquivos temporários criados neste processo. NENHUM outro arquivo do repositório deve ser excluído.\n\n### 📦 Fase 3 — Commit do Repositório Raiz\n\n1. Limpe / verifique a raiz: `git status`\n2. Commit: `git add . && git commit -m \"chore(session): encerramento de sessão\"`\n*(Lembre-se: `.vitalia/memory/session/` é ignorado no repositório raiz e não será commitado aqui).*\n\n### 🗂️ Fase 4 — Encerramento\n\nExiba para o usuário:\n`✅ Shard local atualizado. Rode /vitalia-session-consolidate para sincronizar as memórias (learnings/decisions) e renderizar o Dashboard na nuvem.`\n"
+}
