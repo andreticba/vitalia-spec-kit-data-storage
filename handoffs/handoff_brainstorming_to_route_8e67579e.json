@@ -1,0 +1,41 @@
+{
+  "$schema": "vitalia-handoff-v1.0.0",
+  "schema_type": "workflow_handoff",
+  "schema_version": "1.0.0",
+  "envelope": {
+    "handoff_id": "8e67579e-1b7a-4efa-b640-bdb5672ffb6a",
+    "created_at": "2026-11-10T23:02:28Z",
+    "ttl_seconds": 3600,
+    "source_workflow": "brainstorming",
+    "target_workflow": "route",
+    "direction": "forward",
+    "machine_id": "7f367bd3",
+    "status": "consumed"
+  },
+  "intent": {
+    "intent_type": "brainstorming_to_route",
+    "source_input": "O processo de instalação preciso de um pre-flight check e uma verbosidade maior para orientar o usuário.",
+    "normalized_summary": "specs/004-installer-preflight-and-verbosity/research-brainstorming.md",
+    "confidence": 1.0,
+    "match_level": "semantic",
+    "match_source": "routing_table.brainstorming",
+    "target_command": "/route",
+    "detected_domain": "infraestrutura",
+    "pipeline_stage": "brainstorming",
+    "feature_context": "specs/004-installer-preflight-and-verbosity"
+  },
+  "session_snapshot": {
+    "active_feature": "specs/004-installer-preflight-and-verbosity",
+    "p0": "Transição de contexto determinística local",
+    "machine_id": "7f367bd3",
+    "env_summary": {
+      "python": "3.14.4"
+    }
+  },
+  "routing": {
+    "confirmed_by_user": true,
+    "confirmation_timestamp": "2026-11-10T23:02:28Z",
+    "suggested_command": "/route",
+    "fallback_used": false
+  }
+}
